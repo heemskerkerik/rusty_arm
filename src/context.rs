@@ -32,6 +32,10 @@ impl CpuContext {
         }
     }
 
+    pub fn write_memory(&mut self, data: &Vec<u8>) {
+        self.memory[..data.len()].copy_from_slice(data)
+    }
+
     pub fn get_program_counter_register() -> u4 {
         u4::new(PROGRAM_COUNTER_REGISTER)
     }

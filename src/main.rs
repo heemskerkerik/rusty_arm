@@ -1,6 +1,9 @@
 mod decoding;
 mod context;
 mod exec;
+mod file;
+
+use std::env;
 
 use exec::execute;
 use stopwatch::Stopwatch;
@@ -10,11 +13,17 @@ use crate::context::CpuContext;
 fn main() {
     let mut context = CpuContext::create();
 
-    context.write_word(0x0, 0xe3a00000);
-    context.write_word(0x4, 0xe2800001);
-    context.write_word(0x8, 0xe3500064);
-    context.write_word(0xc, 0x1afffffc);
-    context.write_word(0x10, 0xeafffffe);
+    let file_name = env::args().skip(1).next();
+
+    let file_name = match file_name {
+        Some(v) => v,
+        None => {
+            eprintln!("File name required.");
+            return;
+        }
+    };
+
+    file::read_memory_from_file(&mut context, &file_name);
 
     let mut stopwatch = Stopwatch::start_new();
 
