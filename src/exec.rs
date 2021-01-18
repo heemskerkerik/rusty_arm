@@ -134,6 +134,18 @@ fn execute_branch(context: &mut CpuContext, address: &i32, link: &BranchLinkFlag
 }
 
 fn execute_load(context: &mut CpuContext, args: &LoadStoreArguments) {
+    execute_load_store(context, args, get_load_data, load_data);
+}
+
+fn execute_store(context: &mut CpuContext, args: &LoadStoreArguments) {
+    execute_load_store(context, args, get_store_data, store_data);
+}
+
+fn execute_load_store(
+    context: &mut CpuContext,
+    args: &LoadStoreArguments, 
+    get_data: fn(&CpuContext, u32, &LoadStoreArguments) -> u32,
+    action: fn(&mut CpuContext, u32, u32, &LoadStoreArguments)) {
     let address = context.get_register(args.address_register);
     let offset: u32 = get_load_store_offset(context, &args.offset);
     let address = match args.indexing_type {
@@ -141,11 +153,7 @@ fn execute_load(context: &mut CpuContext, args: &LoadStoreArguments) {
         LoadStoreIndexingType::PostIndexed => address,
     };
 
-    let data = context.read_word(address);
-    let data = match args.data_size {
-        LoadStoreRegularDataSize::Word => data,
-        LoadStoreRegularDataSize::Byte => data & 0x000000ff,
-    };
+    let data = get_data(context, address, args);
 
     if let LoadStoreWriteBackFlag::WriteBack = args.write_back {
         let address = match args.indexing_type {
@@ -155,35 +163,36 @@ fn execute_load(context: &mut CpuContext, args: &LoadStoreArguments) {
         context.set_register(args.address_register, address);
     }
 
+    action(context, address, data, args);
+}
+
+fn get_load_data(context: &CpuContext, address: u32, args: &LoadStoreArguments) -> u32 {
+    let data = context.read_word(address);
+    match args.data_size {
+        LoadStoreRegularDataSize::Word => data,
+        LoadStoreRegularDataSize::Byte => data & 0x000000ff,
+    }
+}
+
+fn load_data(context: &mut CpuContext, _: u32, data: u32, args: &LoadStoreArguments) {
     context.set_register(args.value_register, data);
 }
 
-fn execute_store(context: &mut CpuContext, args: &LoadStoreArguments) {
-    let address = context.get_register(args.address_register);
-    let offset: u32 = get_load_store_offset(context, &args.offset);
-    let address = match args.indexing_type {
-        LoadStoreIndexingType::PreIndexed => apply_offset(address, offset, &args.offset_direction),
-        LoadStoreIndexingType::PostIndexed => address,
-    };
-
+fn get_store_data(context: &CpuContext, address: u32, args: &LoadStoreArguments) -> u32 {
     let data = context.get_register(args.value_register);
-    let data = match args.data_size {
+    match args.data_size {
         LoadStoreRegularDataSize::Word => data,
         LoadStoreRegularDataSize::Byte => {
             let current_word = context.read_word(address);
             (current_word & 0xffffff00) | (data & 0x000000ff)
         },
-    };
-
-    context.write_word(address, data);
-
-    if let LoadStoreWriteBackFlag::WriteBack = args.write_back {
-        let address = match args.indexing_type {
-            LoadStoreIndexingType::PreIndexed => address,
-            LoadStoreIndexingType::PostIndexed => apply_offset(address, offset, &args.offset_direction),
-        };
-        context.set_register(args.address_register, address);
     }
+}
+
+fn store_data(context: &mut CpuContext, address: u32, data: u32, _: &LoadStoreArguments) {
+    context.write_word(address, data);
+}
+
 }
 
 fn get_sign(value: u32) -> bool {
