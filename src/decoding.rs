@@ -75,6 +75,13 @@ pub enum DataArguments {
     Register(RegisterDataArguments),
 }
 
+#[readonly::make]
+#[derive(Debug)]
+pub struct LargeImmediateArguments {
+    pub register: Register,
+    pub immediate: u16,
+}
+
 #[derive(Debug)]
 pub enum UpdateStatusFlags {
     DoNotUpdateStatusFlags,
@@ -146,6 +153,8 @@ pub enum InstructionData {
     Compare(DataArguments),
     Load(LoadStoreArguments),
     Move(DataArguments, UpdateStatusFlags),
+    MoveHalfWord(LargeImmediateArguments),
+    MoveTop(LargeImmediateArguments),
     Store(LoadStoreArguments),
 }
 
@@ -197,6 +206,7 @@ fn decode_data_processing_instruction(encoded_instruction: u32) -> Result<Instru
         ADD_OPCODE => Ok(InstructionData::Add(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
         COMPARE_OPCODE => Ok(InstructionData::Compare(decode_read_arguments(encoded_instruction))),
+        MOVE_HALFWORD_OPCODE => Ok(InstructionData::MoveHalfWord(decode_large_immediate_arguments(encoded_instruction))),
         _ => Err(format!("Unknown opcode {:0>2X}", opcode))
     }
 }
@@ -402,6 +412,17 @@ fn decode_register_shift_arguments(encoded_instruction: u32) -> (Register, Shift
     (operand_register, shift_type, shift_operand)
 }
 
+fn decode_large_immediate_arguments(encoded_instruction: u32) -> LargeImmediateArguments {
+    let register: Register = u4::new(((encoded_instruction & 0x0000f000) >> 12) as u8);
+    let immediate_high = ((encoded_instruction & 0x000f0000) >> 4) as u16;
+    let immediate_low = (encoded_instruction & 0x00000fff) as u16;
+
+    LargeImmediateArguments {
+        register,
+        immediate: immediate_low | immediate_high,
+    }
+}
+
 const EQUAL_CONDITION: u8 = 0x0;
 const NOT_EQUAL_CONDITION: u8 = 0x1;
 const ALWAYS_CONDITION: u8 = 0xe;
@@ -419,6 +440,7 @@ const OPCODE_MASK: u32 = 0x01e00000;
 const ADD_OPCODE: u8 = 0x4;
 const MOVE_OPCODE: u8 = 0xd;
 const COMPARE_OPCODE: u8 = 0xa;
+const MOVE_HALFWORD_OPCODE: u8 = 0x8;
 
 const SHIFT_TYPE_LOGICAL_SHIFT_LEFT: u8 =       0b0000000;
 const SHIFT_TYPE_LOGICAL_SHIFT_RIGHT: u8 =      0b0100000;

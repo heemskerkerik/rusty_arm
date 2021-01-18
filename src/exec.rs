@@ -20,6 +20,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         InstructionData::Compare(ref args) => execute_compare(context, &args),
         InstructionData::Load(ref args) => execute_load(context, &args),
         InstructionData::Move(ref args, ref update_status) => execute_move(context, &args, &update_status),
+        InstructionData::MoveHalfWord(ref args) => execute_move_half_word(context, &args),
         InstructionData::Store(ref args) => execute_store(context, &args),
         _ => panic!("Instruction {:?} not yet implemented", instr.1),
     }
@@ -193,6 +194,8 @@ fn store_data(context: &mut CpuContext, address: u32, data: u32, _: &LoadStoreAr
     context.write_word(address, data);
 }
 
+fn execute_move_half_word(context: &mut CpuContext, args: &LargeImmediateArguments) {
+    context.set_register(args.register, args.immediate as u32);
 }
 
 fn get_sign(value: u32) -> bool {
