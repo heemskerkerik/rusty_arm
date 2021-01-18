@@ -87,6 +87,56 @@ pub enum BranchLinkFlag {
     DoNotLinkReturnAddress,
 }
 
+#[readonly::make]
+#[derive(Debug)]
+pub struct LoadStoreRegisterOffset {
+    pub register: Register,
+    pub shift_type: ShiftType,
+    pub shift_operand: ux::u5,
+}
+
+#[derive(Debug)]
+pub enum LoadStoreOffset {
+    Immediate(u12),
+    Register(LoadStoreRegisterOffset),
+}
+
+#[derive(Debug)]
+pub enum LoadStoreRegularDataSize {
+    Word,
+    Byte,
+}
+
+#[derive(Debug)]
+pub enum LoadStoreIndexingType {
+    PreIndexed,
+    PostIndexed,
+}
+
+#[derive(Debug)]
+pub enum LoadStoreWriteBackFlag {
+    WriteBack,
+    DoNotWriteBack,
+}
+
+#[derive(Debug)]
+pub enum LoadStoreOffsetDirection {
+    Positive,
+    Negative,
+}
+
+#[readonly::make]
+#[derive(Debug)]
+pub struct LoadStoreArguments {
+    pub data_size: LoadStoreRegularDataSize,
+    pub indexing_type: LoadStoreIndexingType,
+    pub write_back: LoadStoreWriteBackFlag,
+    pub offset_direction: LoadStoreOffsetDirection,
+    pub value_register: Register,
+    pub address_register: Register,
+    pub offset: LoadStoreOffset,
+}
+
 #[derive(Debug)]
 pub enum InstructionData {
     Add(ReadWriteDataArguments, UpdateStatusFlags),
@@ -94,7 +144,9 @@ pub enum InstructionData {
     //And(ReadWriteDataArguments, UpdateStatusFlags),
     Branch(i32, BranchLinkFlag),
     Compare(DataArguments),
+    Load(LoadStoreArguments),
     Move(DataArguments, UpdateStatusFlags),
+    Store(LoadStoreArguments),
 }
 
 pub type Instruction = (Condition, InstructionData);
@@ -106,13 +158,15 @@ pub fn decode(encoded_instruction: u32) -> Result<Instruction, String> {
     match instruction_class {
         BRANCH_INSTRUCTION_CLASS => Ok((condition, decode_branch(encoded_instruction))),
         DATA_PROCESSING_IMMEDIATE_INSTRUCTION_CLASS | DATA_PROCESSING_REGISTER_INSTRUCTION_CLASS => {
-            let instruction_data = decode_data_processing_instruction(encoded_instruction);
+            let data = decode_data_processing_instruction(encoded_instruction)?;
 
-            match instruction_data {
-                Ok(data) => Ok((condition, data)),
-                Err(e) => Err(e),
-            }
-        }
+            Ok((condition, data))
+        },
+        LOAD_STORE_IMMEDIATE_INSTRUCTION_CLASS | LOAD_STORE_REGISTER_INSTRUCTION_CLASS => {
+            let data = decode_load_store(encoded_instruction);
+
+            Ok((condition, data))
+        },
         _ => {
             Err(format!("Unknown instruction {:0>8X}", encoded_instruction))
         }
@@ -137,13 +191,13 @@ fn decode_data_processing_instruction(encoded_instruction: u32) -> Result<Instru
     } else {
         UpdateStatusFlags::DoNotUpdateStatusFlags
     };
-    let opcode = encoded_instruction & OPCODE_MASK;
+    let opcode = ((encoded_instruction & OPCODE_MASK) >> 21) as u8;
 
     match opcode {
         ADD_OPCODE => Ok(InstructionData::Add(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
         COMPARE_OPCODE => Ok(InstructionData::Compare(decode_read_arguments(encoded_instruction))),
-        _ => Err(format!("Unknown opcode {:0>2X}", opcode >> 21))
+        _ => Err(format!("Unknown opcode {:0>2X}", opcode))
     }
 }
 
@@ -156,6 +210,65 @@ fn decode_branch(encoded_instruction: u32) -> InstructionData {
     let link_flag = if encoded_instruction & 0x01000000 != 0 { BranchLinkFlag::LinkReturnAddress } else { BranchLinkFlag::DoNotLinkReturnAddress };
 
     InstructionData::Branch(adjusted_destination_address, link_flag)
+}
+
+fn decode_load_store(encoded_instruction: u32) -> InstructionData {
+    let immediate_mode = encoded_instruction & 0x02000000 == 0;
+    let indexing_type = if encoded_instruction & 0x01000000 != 0 { LoadStoreIndexingType::PreIndexed } else { LoadStoreIndexingType::PostIndexed };
+    let offset_direction = if encoded_instruction & 0x00800000 != 0 { LoadStoreOffsetDirection::Positive } else { LoadStoreOffsetDirection::Negative };
+    let data_size = if encoded_instruction & 0x00400000 != 0 { LoadStoreRegularDataSize::Byte } else { LoadStoreRegularDataSize::Word };
+    let write_back = if encoded_instruction & 0x00200000 != 0 { LoadStoreWriteBackFlag::WriteBack } else { LoadStoreWriteBackFlag::DoNotWriteBack };
+    let load_operation = encoded_instruction & 0x00100000 != 0;
+
+    let address_register: Register = u4::new(((encoded_instruction & 0x000f0000) >> 16) as u8);
+    let value_register: Register = u4::new(((encoded_instruction & 0x0000f000) >> 12) as u8);
+
+    let offset = if immediate_mode {
+        let immediate = u12::new((encoded_instruction & 0x00000fff) as u16);
+        LoadStoreOffset::Immediate(immediate)
+    } else {
+        let shift_type = ((encoded_instruction & 0x00000060) >> 5) as u8;
+
+        let shift_type = match shift_type {
+            0b00 => ShiftType::LogicalShiftLeft,
+            0b01 => ShiftType::LogicalShiftRight,
+            0b10 => ShiftType::ArithmeticShiftRight,
+            0b11 => ShiftType::RotateRight,
+            _ => panic!("Impossible shift type {}", shift_type),
+        };
+        let shift_operand = u5::new(((encoded_instruction & 0x00000f80) >> 7) as u8);
+        let register = u4::new((encoded_instruction & 0x0000000f) as u8);
+
+        let shift_operand = match shift_type {
+            ShiftType::LogicalShiftLeft => shift_operand,
+            _ if shift_operand == u5::new(0) => u5::new(32),
+            _ => shift_operand,
+        };
+
+        LoadStoreOffset::Register(
+            LoadStoreRegisterOffset {
+                register,
+                shift_type,
+                shift_operand,
+            }
+        )
+    };
+
+    let arguments = LoadStoreArguments {
+        data_size,
+        indexing_type,
+        offset_direction,
+        write_back,
+        value_register,
+        address_register,
+        offset
+    };
+
+    if load_operation {
+        InstructionData::Load(arguments)
+    } else {
+        InstructionData::Store(arguments)
+    }
 }
 
 fn decode_write_arguments(encoded_instruction: u32) -> DataArguments {
@@ -188,10 +301,11 @@ fn decode_write_arguments(encoded_instruction: u32) -> DataArguments {
 }
 
 fn decode_shifted_immediate(encoded_instruction: u32) -> (u32, bool, u8) {
-    let rotate = ((encoded_instruction & 0x00000f00) >> 8) as u8;
+    // rotate is encoded as rotate / 2, so this is >> 8, << 1
+    let rotate = ((encoded_instruction & 0x00000f00) >> 7) as u8;
     let immediate = (encoded_instruction & 0x000000ff) as u32;
 
-    let immediate = immediate.wrapping_shr(rotate.into());
+    let immediate = immediate.rotate_right(rotate as u32);
     let carry = immediate & 0x80000000 != 0;
 
     (immediate, carry, rotate)
@@ -297,13 +411,14 @@ const BRANCH_INSTRUCTION_CLASS: u32 = 0x0a000000;
 const DATA_PROCESSING_REGISTER_INSTRUCTION_CLASS: u32 = 0x00000000;
 const DATA_PROCESSING_IMMEDIATE_INSTRUCTION_CLASS: u32 = 0x02000000;
 const LOAD_STORE_IMMEDIATE_INSTRUCTION_CLASS: u32 = 0x04000000;
+const LOAD_STORE_REGISTER_INSTRUCTION_CLASS: u32 = 0x05000000;
 const UPDATE_STATUS_BIT: u32 = 0x00100000;
 const IMMEDIATE_MODE_BIT: u32 = 0x02000000;
 const OPCODE_MASK: u32 = 0x01e00000;
 
-const ADD_OPCODE: u32 = 0x00800000;
-const MOVE_OPCODE: u32 = 0x01a00000;
-const COMPARE_OPCODE: u32 = 0x01400000;
+const ADD_OPCODE: u8 = 0x4;
+const MOVE_OPCODE: u8 = 0xd;
+const COMPARE_OPCODE: u8 = 0xa;
 
 const SHIFT_TYPE_LOGICAL_SHIFT_LEFT: u8 =       0b0000000;
 const SHIFT_TYPE_LOGICAL_SHIFT_RIGHT: u8 =      0b0100000;

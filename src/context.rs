@@ -41,7 +41,7 @@ impl CpuContext {
     }
 
     pub fn get_program_counter(&self) -> u32 {
-        self.get_register(CpuContext::get_program_counter_register())
+        self.registers[PROGRAM_COUNTER_REGISTER as usize]
     }
 
     pub fn set_program_counter(&mut self, value: u32) {
@@ -50,7 +50,12 @@ impl CpuContext {
 
     pub fn get_register(&self, register: u4) -> u32 {
         let register: u8 = register.into();
-        self.registers[register as usize]
+        let value = self.registers[register as usize];
+
+        match register {
+            PROGRAM_COUNTER_REGISTER => value + 4,  // instructions reading from PC will get PC + 8, but since PC has already been advanced by 4, we need to add only another 4
+            _ => value,
+        }
     }
 
     pub fn set_register(&mut self, register: u4, value: u32) {

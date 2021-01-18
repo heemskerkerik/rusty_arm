@@ -15,10 +15,12 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
     }
 
     match instr.1 {
-        InstructionData::Move(ref args, ref update_status) => execute_move(context, &args, &update_status),
         InstructionData::Add(ref args, ref update_status) => execute_add(context, &args, &update_status),
-        InstructionData::Compare(ref args) => execute_compare(context, &args),
         InstructionData::Branch(ref address, ref link) => execute_branch(context, &address, &link),
+        InstructionData::Compare(ref args) => execute_compare(context, &args),
+        InstructionData::Load(ref args) => execute_load(context, &args),
+        InstructionData::Move(ref args, ref update_status) => execute_move(context, &args, &update_status),
+        InstructionData::Store(ref args) => execute_store(context, &args),
         _ => panic!("Instruction {:?} not yet implemented", instr.1),
     }
 }
@@ -131,6 +133,59 @@ fn execute_branch(context: &mut CpuContext, address: &i32, link: &BranchLinkFlag
     }
 }
 
+fn execute_load(context: &mut CpuContext, args: &LoadStoreArguments) {
+    let address = context.get_register(args.address_register);
+    let offset: u32 = get_load_store_offset(context, &args.offset);
+    let address = match args.indexing_type {
+        LoadStoreIndexingType::PreIndexed => apply_offset(address, offset, &args.offset_direction),
+        LoadStoreIndexingType::PostIndexed => address,
+    };
+
+    let data = context.read_word(address);
+    let data = match args.data_size {
+        LoadStoreRegularDataSize::Word => data,
+        LoadStoreRegularDataSize::Byte => data & 0x000000ff,
+    };
+
+    if let LoadStoreWriteBackFlag::WriteBack = args.write_back {
+        let address = match args.indexing_type {
+            LoadStoreIndexingType::PreIndexed => address,
+            LoadStoreIndexingType::PostIndexed => apply_offset(address, offset, &args.offset_direction),
+        };
+        context.set_register(args.address_register, address);
+    }
+
+    context.set_register(args.value_register, data);
+}
+
+fn execute_store(context: &mut CpuContext, args: &LoadStoreArguments) {
+    let address = context.get_register(args.address_register);
+    let offset: u32 = get_load_store_offset(context, &args.offset);
+    let address = match args.indexing_type {
+        LoadStoreIndexingType::PreIndexed => apply_offset(address, offset, &args.offset_direction),
+        LoadStoreIndexingType::PostIndexed => address,
+    };
+
+    let data = context.get_register(args.value_register);
+    let data = match args.data_size {
+        LoadStoreRegularDataSize::Word => data,
+        LoadStoreRegularDataSize::Byte => {
+            let current_word = context.read_word(address);
+            (current_word & 0xffffff00) | (data & 0x000000ff)
+        },
+    };
+
+    context.write_word(address, data);
+
+    if let LoadStoreWriteBackFlag::WriteBack = args.write_back {
+        let address = match args.indexing_type {
+            LoadStoreIndexingType::PreIndexed => address,
+            LoadStoreIndexingType::PostIndexed => apply_offset(address, offset, &args.offset_direction),
+        };
+        context.set_register(args.address_register, address);
+    }
+}
+
 fn get_sign(value: u32) -> bool {
     value & 0x80000000 != 0
 }
@@ -180,5 +235,29 @@ fn logical_shift_right(context: &CpuContext, value: u32, bits: u8) -> (u32, bool
         (result, false)
     } else { // bits == 32 
         (result, get_sign(value))
+    }
+}
+
+fn apply_offset(address: u32, offset: u32, direction: &LoadStoreOffsetDirection) -> u32 {
+    match *direction {
+        LoadStoreOffsetDirection::Positive => address + offset,
+        LoadStoreOffsetDirection::Negative => address - offset,
+    }
+}
+
+fn get_load_store_offset(context: &CpuContext, offset: &LoadStoreOffset) -> u32 {
+    match *offset {
+        LoadStoreOffset::Immediate(v) => v.into(),
+        LoadStoreOffset::Register(ref args) => {
+            let offset = context.get_register(args.register);
+
+            let shift_operand: u32 = args.shift_operand.into();
+            match args.shift_type {
+                ShiftType::LogicalShiftLeft => offset << shift_operand,
+                ShiftType::LogicalShiftRight => offset >> shift_operand,
+                ShiftType::RotateRight => offset.rotate_right(shift_operand),
+                _ => panic!("Shift type {:?} not yet implemented", args.shift_type),
+            }
+        }
     }
 }

@@ -13,6 +13,7 @@ use crate::context::CpuContext;
 fn main() {
     let mut context = CpuContext::create();
 
+    println!("Args: {:?}", env::args().collect::<Vec<String>>());
     let file_name = env::args().skip(1).next();
 
     let file_name = match file_name {
