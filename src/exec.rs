@@ -122,14 +122,14 @@ fn execute_compare(context: &mut CpuContext, args: &DataArguments) {
 }
 
 fn execute_branch(context: &mut CpuContext, address: &i32, link: &BranchLinkFlag) {
-    // execute has already incremented PC by INSTRUCTION_SIZE
-    let original_program_counter = context.get_program_counter() - INSTRUCTION_SIZE;
+    // PC has already been advanced by execute
+    let original_program_counter = context.get_program_counter();
 
     if let BranchLinkFlag::LinkReturnAddress = *link {
-        panic!("Branch with link not yet implemented!");
+        context.set_register(CpuContext::get_link_return_register(), original_program_counter);
     }
 
-    let destination = original_program_counter.wrapping_add(*address as u32);
+    let destination = (original_program_counter - INSTRUCTION_SIZE).wrapping_add(*address as u32);
 
     if destination == original_program_counter {
         context.halt()
