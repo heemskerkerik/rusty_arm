@@ -14,6 +14,10 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         return;
     }
 
+    if cfg!(feature = "print_instructions") {
+        println!("{:0>8X} {:0>8X} {:?}", program_counter, context.read_word(program_counter), instr);
+    }
+
     match instr.1 {
         InstructionData::Add(ref args, ref update_status) => execute_add(context, &args, &update_status),
         InstructionData::Branch(ref address, ref link) => execute_branch(context, &address, &link),
