@@ -230,6 +230,9 @@ fn decode_load_store(encoded_instruction: u32) -> InstructionData {
     let write_back = if encoded_instruction & 0x00200000 != 0 { LoadStoreWriteBackFlag::WriteBack } else { LoadStoreWriteBackFlag::DoNotWriteBack };
     let load_operation = encoded_instruction & 0x00100000 != 0;
 
+    // if post-indexing is used, the write-back bit will be zero, but write-back should still be enabled
+    let write_back = if let LoadStoreIndexingType::PostIndexed = indexing_type { LoadStoreWriteBackFlag::WriteBack } else { write_back };
+
     let address_register: Register = u4::new(((encoded_instruction & 0x000f0000) >> 16) as u8);
     let value_register: Register = u4::new(((encoded_instruction & 0x0000f000) >> 12) as u8);
 
@@ -388,7 +391,7 @@ fn decode_read_write_arguments(encoded_instruction: u32) -> ReadWriteDataArgumen
 fn decode_register_shift_arguments(encoded_instruction: u32) -> (Register, ShiftType, ShiftOperand) {
     let operand_register: Register = u4::new((encoded_instruction & 0x0000000f) as u8);
     let shift_type = (encoded_instruction & SHIFT_TYPE_MASK) as u8;
-    let immediate_shift = encoded_instruction & SHIFT_IMMEDIATE_BIT != 0;
+    let immediate_shift = encoded_instruction & SHIFT_IMMEDIATE_BIT == 0;
 
     let shift_operand = match immediate_shift {
         true => {
