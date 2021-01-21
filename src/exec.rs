@@ -227,7 +227,7 @@ fn apply_shift_operand(context: &CpuContext, register: &u4, shift_type: &ShiftTy
 }
 
 fn logical_shift_left(context: &CpuContext, value: u32, bits: u8) -> (u32, bool) {
-    let result = value << bits;
+    let result = value.wrapping_shl(bits as u32);
 
     if bits == 0 {
         (result, context.get_status().carry)
@@ -241,7 +241,7 @@ fn logical_shift_left(context: &CpuContext, value: u32, bits: u8) -> (u32, bool)
 }
 
 fn logical_shift_right(context: &CpuContext, value: u32, bits: u8) -> (u32, bool) {
-    let result = value >> bits;
+    let result = value.wrapping_shr(bits as u32);
 
     if bits == 0 {
         (result, context.get_status().carry)
