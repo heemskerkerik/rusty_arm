@@ -61,9 +61,10 @@ fn decode_data_processing_instruction(encoded_instruction: u32) -> Result<Instru
 
     match opcode {
         ADD_OPCODE => Ok(InstructionData::Add(decode_read_write_arguments(encoded_instruction), update_status_flag)),
-        MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
         COMPARE_OPCODE => Ok(InstructionData::Compare(decode_read_arguments(encoded_instruction))),
+        MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
         MOVE_HALFWORD_OPCODE => Ok(InstructionData::MoveHalfWord(decode_large_immediate_arguments(encoded_instruction))),
+        SUBTRACT_OPCODE => Ok(InstructionData::Subtract(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         _ => Err(format!("Unknown opcode {:0>2X}", opcode))
     }
 }
@@ -310,9 +311,10 @@ const IMMEDIATE_MODE_BIT: u32 = 0x02000000;
 const OPCODE_MASK: u32 = 0x01e00000;
 
 const ADD_OPCODE: u8 = 0x4;
-const MOVE_OPCODE: u8 = 0xd;
 const COMPARE_OPCODE: u8 = 0xa;
+const MOVE_OPCODE: u8 = 0xd;
 const MOVE_HALFWORD_OPCODE: u8 = 0x8;
+const SUBTRACT_OPCODE: u8 = 0x2;
 
 const SHIFT_TYPE_LOGICAL_SHIFT_LEFT: u8 =       0b0000000;
 const SHIFT_TYPE_LOGICAL_SHIFT_RIGHT: u8 =      0b0100000;

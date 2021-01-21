@@ -26,6 +26,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         InstructionData::Move(ref args, ref update_status) => execute_move(context, &args, &update_status),
         InstructionData::MoveHalfWord(ref args) => execute_move_half_word(context, &args),
         InstructionData::Store(ref args) => execute_store(context, &args),
+        InstructionData::Subtract(ref args, ref update_status) => execute_subtract(context, &args, &update_status),
         _ => panic!("Instruction {:?} not yet implemented", instr.1),
     }
 }
@@ -101,7 +102,39 @@ fn execute_add(context: &mut CpuContext, args: &ReadWriteDataArguments, update_s
             Some((original as u64) + (operand as u64) > (u32::MAX as u64)), 
             Some(
                 get_sign(original) != get_sign(operand)
-                && get_sign(original) != get_sign(result)
+             && get_sign(original) != get_sign(result)
+            )
+        );
+    }
+}
+
+fn execute_subtract(context: &mut CpuContext, args: &ReadWriteDataArguments, update_status: &UpdateStatusFlags) {
+    let (destination_register, original, result, operand) = match args {
+        ReadWriteDataArguments::Immediate(args) => {
+            let original = context.get_register(args.source_register.into());
+            let result = original.wrapping_sub(args.immediate);
+
+            (args.destination_register, original, result, args.immediate)
+        },
+        ReadWriteDataArguments::Register(args) => {
+            let original = context.get_register(args.source_register.into());
+            let (operand, _) = apply_shift_operand(context, &args.operand_register, &args.shift_type, &args.shift_operand);
+            let result = original.wrapping_sub(operand);
+
+            (args.destination_register, original, result, operand)
+        }
+    };
+
+    context.set_register(destination_register.into(), result);
+
+    if let UpdateStatusFlags::UpdateStatusFlags = *update_status {
+        context.set_status(
+            Some(get_sign(result)),
+            Some(result == 0),
+            Some(result <= original),
+            Some(
+                get_sign(original) != get_sign(operand)
+             && get_sign(original) != get_sign(result)
             )
         );
     }

@@ -159,6 +159,7 @@ pub enum InstructionData {
     MoveHalfWord(LargeImmediateArguments),                          // MOVW<c>
     MoveTop(LargeImmediateArguments),                               // MOVT<c>
     Store(LoadStoreArguments),                                      // STR[B]<c>, PUSH<c>
+    Subtract(ReadWriteDataArguments, UpdateStatusFlags),            // SUB<c>[S]
 }
 
 pub type Instruction = (Condition, InstructionData);
