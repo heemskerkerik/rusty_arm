@@ -34,8 +34,20 @@ fn decode_condition(encoded_instruction: u32) -> Condition {
     match condition_byte {
         EQUAL_CONDITION => Condition::Equal,
         NOT_EQUAL_CONDITION => Condition::NotEqual,
+        CARRY_SET_CONDITION => Condition::CarrySet,
+        CARRY_CLEAR_CONDITION => Condition::CarryClear,
+        NEGATIVE_CONDITION => Condition::Negative,
+        POSITIVE_CONDITION => Condition::Positive,
+        OVERFLOW_CONDITION => Condition::Overflow,
+        NO_OVERFLOW_CONDITION => Condition::NoOverflow,
+        UNSIGNED_HIGHER_CONDITION => Condition::UnsignedHigher,
+        UNSIGNED_LOWER_OR_SAME_CONDITION => Condition::UnsignedLowerOrSame,
+        GREATER_THAN_OR_EQUAL_CONDITION => Condition::GreaterThanOrEqual,
+        LESS_THAN_CONDITION => Condition::LessThan,
+        GREATER_THAN_CONDITION => Condition::GreaterThan,
+        LESS_THAN_OR_EQUAL_CONDITION => Condition::LessThanOrEqual,
         ALWAYS_CONDITION => Condition::Always,
-        _ => Condition::Always,
+        _ => panic!("Unknown condition {:0>2}", condition_byte),
     }
 }
 
@@ -273,6 +285,18 @@ fn decode_large_immediate_arguments(encoded_instruction: u32) -> LargeImmediateA
 
 const EQUAL_CONDITION: u8 = 0x0;
 const NOT_EQUAL_CONDITION: u8 = 0x1;
+const CARRY_SET_CONDITION: u8 = 0x2;
+const CARRY_CLEAR_CONDITION: u8 = 0x3;
+const NEGATIVE_CONDITION: u8 = 0x4;
+const POSITIVE_CONDITION: u8 = 0x5;
+const OVERFLOW_CONDITION: u8 = 0x6;
+const NO_OVERFLOW_CONDITION: u8 = 0x7;
+const UNSIGNED_HIGHER_CONDITION: u8 = 0x8;
+const UNSIGNED_LOWER_OR_SAME_CONDITION: u8 = 0x9;
+const GREATER_THAN_OR_EQUAL_CONDITION: u8 = 0xa;
+const LESS_THAN_CONDITION: u8 = 0xb;
+const GREATER_THAN_CONDITION: u8 = 0xc;
+const LESS_THAN_OR_EQUAL_CONDITION: u8 = 0xd;
 const ALWAYS_CONDITION: u8 = 0xe;
 const CONDITION_MASK: u32 = 0xf0000000;
 const INSTRUCTION_CLASS_MASK: u32 = 0x0e000000;

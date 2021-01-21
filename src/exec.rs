@@ -34,10 +34,21 @@ fn is_condition_met(context: &CpuContext, cond: &Condition) -> bool {
     let status = context.get_status();
 
     match cond {
-        Condition::Always => true,
-        Condition::NotEqual => !status.zero,
         Condition::Equal => status.zero,
-        _ => panic!("Condition {:?} not yet implemented.", cond)
+        Condition::NotEqual => !status.zero,
+        Condition::CarrySet => status.carry,
+        Condition::CarryClear => !status.carry,
+        Condition::Negative => status.negative,
+        Condition::Positive => !status.negative,
+        Condition::Overflow => status.overflow,
+        Condition::NoOverflow => !status.overflow,
+        Condition::UnsignedHigher => status.carry && !status.zero,
+        Condition::UnsignedLowerOrSame => !status.carry || status.zero,
+        Condition::GreaterThanOrEqual => status.negative == status.overflow,
+        Condition::LessThan => status.negative != status.overflow,
+        Condition::GreaterThan => !status.zero && status.negative == status.overflow,
+        Condition::LessThanOrEqual => status.zero || status.negative != status.overflow,
+        Condition::Always => true,
     }
 }
 
