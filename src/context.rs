@@ -1,7 +1,5 @@
 use std::mem::size_of;
 
-use ux::{self, u4};
-
 pub struct CpuContext {
     registers: [u32; 16],
     memory: Box<[u8]>,
@@ -17,6 +15,7 @@ pub struct StatusFlags {
     pub overflow: bool,
 }
 
+const LINK_RETURN_REGISTER: u8 = 14;
 const PROGRAM_COUNTER_REGISTER: u8 = 15;
 
 impl CpuContext {
@@ -36,8 +35,12 @@ impl CpuContext {
         self.memory[..data.len()].copy_from_slice(data)
     }
 
-    pub fn get_program_counter_register() -> u4 {
-        u4::new(PROGRAM_COUNTER_REGISTER)
+    pub const fn get_link_return_register() -> u8 {
+        LINK_RETURN_REGISTER
+    }
+
+    pub const fn get_program_counter_register() -> u8 {
+        PROGRAM_COUNTER_REGISTER
     }
 
     pub fn get_program_counter(&self) -> u32 {
@@ -48,8 +51,8 @@ impl CpuContext {
         self.set_register(CpuContext::get_program_counter_register(), value)
     }
 
-    pub fn get_register(&self, register: u4) -> u32 {
-        let register: u8 = register.into();
+    pub fn get_register(&self, register: u8) -> u32 {
+        assert!(register <= PROGRAM_COUNTER_REGISTER);
         let value = self.registers[register as usize];
 
         match register {
@@ -58,8 +61,8 @@ impl CpuContext {
         }
     }
 
-    pub fn set_register(&mut self, register: u4, value: u32) {
-        let register: u8 = register.into();
+    pub fn set_register(&mut self, register: u8, value: u32) {
+        assert!(register <= PROGRAM_COUNTER_REGISTER);
         self.registers[register as usize] = value
     }
 
@@ -131,10 +134,12 @@ impl CpuContext {
     pub fn debug_get_status(&self) -> String {
         let mut result = String::from("(NZCV) ");
 
-        result.push(if self.status.negative { '1' } else { '0' });
-        result.push(if self.status.zero { '1' } else { '0' });
-        result.push(if self.status.carry { '1' } else { '0' });
-        result.push(if self.status.overflow { '1' } else { '0' });
+        let status = self.status;
+
+        result.push(if status.negative { '1' } else { '0' });
+        result.push(if status.zero { '1' } else { '0' });
+        result.push(if status.carry { '1' } else { '0' });
+        result.push(if status.overflow { '1' } else { '0' });
 
         result
     }

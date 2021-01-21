@@ -2,10 +2,12 @@ mod decoding;
 mod context;
 mod exec;
 mod file;
+mod instructions;
 
 use std::env;
 
 use exec::execute;
+use decoding::decode;
 use stopwatch::Stopwatch;
 
 use crate::context::CpuContext;
@@ -31,7 +33,7 @@ fn main() {
     while !context.is_halted() {
         let program_counter = context.get_program_counter();
         let word = context.read_word(program_counter);
-        let instr = decoding::decode(word).unwrap();
+        let instr = decode(word).unwrap();
 
         execute(&mut context, instr);
     }

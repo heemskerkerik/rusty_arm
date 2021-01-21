@@ -2,7 +2,7 @@ use core::panic;
 
 use ux::u4;
 
-use crate::{context::*, decoding::*};
+use crate::{context::*, instructions::*};
 
 const INSTRUCTION_SIZE: u32 = 4;
 
@@ -52,7 +52,7 @@ fn execute_move(context: &mut CpuContext, args: &DataArguments, update_status: &
         }
     };
 
-    context.set_register(register, value);
+    context.set_register(register.into(), value);
 
     if let UpdateStatusFlags::UpdateStatusFlags = *update_status {
         context.set_status(
@@ -67,13 +67,13 @@ fn execute_move(context: &mut CpuContext, args: &DataArguments, update_status: &
 fn execute_add(context: &mut CpuContext, args: &ReadWriteDataArguments, update_status: &UpdateStatusFlags) {
     let (destination_register, original, result, operand) = match args {
         ReadWriteDataArguments::Immediate(args) => {
-            let original = context.get_register(args.source_register);
+            let original = context.get_register(args.source_register.into());
             let result = original.wrapping_add(args.immediate);
 
             (args.destination_register, original, result, args.immediate)
         },
         ReadWriteDataArguments::Register(args) => {
-            let original = context.get_register(args.source_register);
+            let original = context.get_register(args.source_register.into());
             let (operand, _) = apply_shift_operand(context, &args.operand_register, &args.shift_type, &args.shift_operand);
             let result = original.wrapping_add(operand);
 
@@ -81,7 +81,7 @@ fn execute_add(context: &mut CpuContext, args: &ReadWriteDataArguments, update_s
         }
     };
 
-    context.set_register(destination_register, result);
+    context.set_register(destination_register.into(), result);
 
     if let UpdateStatusFlags::UpdateStatusFlags = *update_status {
         context.set_status(
@@ -107,7 +107,7 @@ fn execute_compare(context: &mut CpuContext, args: &DataArguments) {
         }
     };
 
-    let original = context.get_register(register);
+    let original = context.get_register(register.into());
     let result = original.wrapping_sub(operand);
 
     context.set_status(
@@ -151,7 +151,7 @@ fn execute_load_store(
     args: &LoadStoreArguments, 
     get_data: fn(&CpuContext, u32, &LoadStoreArguments) -> u32,
     action: fn(&mut CpuContext, u32, u32, &LoadStoreArguments)) {
-    let address = context.get_register(args.address_register);
+    let address = context.get_register(args.address_register.into());
     let offset: u32 = get_load_store_offset(context, &args.offset);
     let address = match args.indexing_type {
         LoadStoreIndexingType::PreIndexed => apply_offset(address, offset, &args.offset_direction),
@@ -165,7 +165,7 @@ fn execute_load_store(
             LoadStoreIndexingType::PreIndexed => address,
             LoadStoreIndexingType::PostIndexed => apply_offset(address, offset, &args.offset_direction),
         };
-        context.set_register(args.address_register, address);
+        context.set_register(args.address_register.into(), address);
     }
 
     action(context, address, data, args);
@@ -180,11 +180,11 @@ fn get_load_data(context: &CpuContext, address: u32, args: &LoadStoreArguments) 
 }
 
 fn load_data(context: &mut CpuContext, _: u32, data: u32, args: &LoadStoreArguments) {
-    context.set_register(args.value_register, data);
+    context.set_register(args.value_register.into(), data);
 }
 
 fn get_store_data(context: &CpuContext, address: u32, args: &LoadStoreArguments) -> u32 {
-    let data = context.get_register(args.value_register);
+    let data = context.get_register(args.value_register.into());
     match args.data_size {
         LoadStoreRegularDataSize::Word => data,
         LoadStoreRegularDataSize::Byte => {
@@ -199,7 +199,7 @@ fn store_data(context: &mut CpuContext, address: u32, data: u32, _: &LoadStoreAr
 }
 
 fn execute_move_half_word(context: &mut CpuContext, args: &LargeImmediateArguments) {
-    context.set_register(args.register, args.immediate as u32);
+    context.set_register(args.register.into(), args.immediate as u32);
 }
 
 fn get_sign(value: u32) -> bool {
@@ -207,7 +207,7 @@ fn get_sign(value: u32) -> bool {
 }
 
 fn apply_shift_operand(context: &CpuContext, register: &u4, shift_type: &ShiftType, shift_operand: &ShiftOperand) -> (u32, bool) {
-    let raw = context.get_register(*register);
+    let raw = context.get_register((*register).into());
 
     let shift_operand = get_shift_operand(context, shift_operand);
 
@@ -220,7 +220,7 @@ fn apply_shift_operand(context: &CpuContext, register: &u4, shift_type: &ShiftTy
     fn get_shift_operand(context: &CpuContext, operand: &ShiftOperand) -> u8 {
         match *operand {
             ShiftOperand::Immediate(immediate) => immediate.into(),
-            ShiftOperand::Register(register) => context.get_register(register) as u8,
+            ShiftOperand::Register(register) => context.get_register(register.into()) as u8,
         }
     }
 
@@ -265,7 +265,7 @@ fn get_load_store_offset(context: &CpuContext, offset: &LoadStoreOffset) -> u32 
     match *offset {
         LoadStoreOffset::Immediate(v) => v.into(),
         LoadStoreOffset::Register(ref args) => {
-            let offset = context.get_register(args.register);
+            let offset = context.get_register(args.register.into());
 
             let shift_operand: u32 = args.shift_operand.into();
             match args.shift_type {
