@@ -20,6 +20,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
 
     match instr.1 {
         InstructionData::Add(ref args, ref update_status) => execute_add(context, &args, &update_status),
+        InstructionData::AddWithCarry(ref args, ref update_status) => execute_add_with_carry(context, &args, &update_status),
         InstructionData::Branch(ref address, ref link) => execute_branch(context, &address, &link),
         InstructionData::BranchExchange(ref register) => execute_branch_exchange(context, &register),
         InstructionData::Compare(ref args) => execute_compare(context, &args),
@@ -29,7 +30,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         InstructionData::MoveNot(ref args, ref update_status) => execute_move_not(context, &args, &update_status),
         InstructionData::Store(ref args) => execute_store(context, &args),
         InstructionData::Subtract(ref args, ref update_status) => execute_subtract(context, &args, &update_status),
-        _ => panic!("Instruction {:?} not yet implemented", instr.1),
+        _ => panic!("Instruction {:?} at {:0>8X} not yet implemented", instr.1, program_counter),
     }
 }
 
@@ -87,6 +88,24 @@ fn execute_move_not(context: &mut CpuContext, args: &DataArguments, update_statu
 }
 
 fn execute_add(context: &mut CpuContext, args: &ReadWriteDataArguments, update_status: &UpdateStatusFlags) {
+    execute_add_core(context, args, update_status, |_, _, v| v)
+}
+
+fn execute_add_with_carry(context: &mut CpuContext, args: &ReadWriteDataArguments, update_status: &UpdateStatusFlags) {
+    execute_add_core(
+        context, 
+        args, 
+        update_status, 
+        |c, _, v| v.wrapping_add(if c.get_status().carry { 1 } else { 0 })
+    )
+}
+
+fn execute_add_core(
+    context: &mut CpuContext, 
+    args: &ReadWriteDataArguments, 
+    update_status: &UpdateStatusFlags,
+    modify_value: fn(&CpuContext, &ReadWriteDataArguments, u32) -> u32
+) {
     let (destination_register, original, result, operand) = match args {
         ReadWriteDataArguments::Immediate(args) => {
             let original = context.get_register(args.source_register.into());
@@ -102,6 +121,8 @@ fn execute_add(context: &mut CpuContext, args: &ReadWriteDataArguments, update_s
             (args.destination_register, original, result, operand)
         }
     };
+
+    let result = modify_value(context, args, result);
 
     context.set_register(destination_register.into(), result);
 

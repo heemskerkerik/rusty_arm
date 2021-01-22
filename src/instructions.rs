@@ -150,7 +150,7 @@ pub struct LoadStoreArguments {
 #[derive(Debug)]
 pub enum InstructionData {
     Add(ReadWriteDataArguments, UpdateStatusFlags),                 // ADD<c>[S]
-    //AddWithCarry(ReadWriteDataArguments, UpdateStatusFlags),
+    AddWithCarry(ReadWriteDataArguments, UpdateStatusFlags),        // ADC<c>[S]
     //And(ReadWriteDataArguments, UpdateStatusFlags),
     Branch(i32, BranchLinkFlag),                                    // B[L]<c>
     BranchExchange(Register),                                       // BX<c>
