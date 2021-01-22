@@ -61,9 +61,11 @@ fn decode_data_processing_instruction(encoded_instruction: u32) -> Result<Instru
 
     match opcode {
         ADD_OPCODE => Ok(InstructionData::Add(decode_read_write_arguments(encoded_instruction), update_status_flag)),
+        BRANCH_EXCHANGE_OPCODE => Ok(InstructionData::BranchExchange(decode_branch_exchange_arguments(encoded_instruction))),
         COMPARE_OPCODE => Ok(InstructionData::Compare(decode_read_arguments(encoded_instruction))),
         MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
         MOVE_HALFWORD_OPCODE => Ok(InstructionData::MoveHalfWord(decode_large_immediate_arguments(encoded_instruction))),
+        MOVE_NOT_OPCODE => Ok(InstructionData::MoveNot(decode_write_arguments(encoded_instruction), update_status_flag)),
         SUBTRACT_OPCODE => Ok(InstructionData::Subtract(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         _ => Err(format!("Unknown opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
     }
@@ -284,6 +286,10 @@ fn decode_large_immediate_arguments(encoded_instruction: u32) -> LargeImmediateA
     }
 }
 
+fn decode_branch_exchange_arguments(encoded_instruction: u32) -> Register {
+    u4::new((encoded_instruction & 0x0000000f) as u8)
+}
+
 const EQUAL_CONDITION: u8 = 0x0;
 const NOT_EQUAL_CONDITION: u8 = 0x1;
 const CARRY_SET_CONDITION: u8 = 0x2;
@@ -311,9 +317,11 @@ const IMMEDIATE_MODE_BIT: u32 = 0x02000000;
 const OPCODE_MASK: u32 = 0x01e00000;
 
 const ADD_OPCODE: u8 = 0x4;
+const BRANCH_EXCHANGE_OPCODE: u8 = 0x9;
 const COMPARE_OPCODE: u8 = 0xa;
 const MOVE_OPCODE: u8 = 0xd;
 const MOVE_HALFWORD_OPCODE: u8 = 0x8;
+const MOVE_NOT_OPCODE: u8 = 0xf;
 const SUBTRACT_OPCODE: u8 = 0x2;
 
 const SHIFT_TYPE_LOGICAL_SHIFT_LEFT: u8 =       0b0000000;

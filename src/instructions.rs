@@ -153,10 +153,12 @@ pub enum InstructionData {
     //AddWithCarry(ReadWriteDataArguments, UpdateStatusFlags),
     //And(ReadWriteDataArguments, UpdateStatusFlags),
     Branch(i32, BranchLinkFlag),                                    // B[L]<c>
+    BranchExchange(Register),                                       // BX<c>
     Compare(DataArguments),                                         // CMP<c>
     Load(LoadStoreArguments),                                       // LDR[B]<c>, POP<c>
     Move(DataArguments, UpdateStatusFlags),                         // MOV<c>[S]
     MoveHalfWord(LargeImmediateArguments),                          // MOVW<c>
+    MoveNot(DataArguments, UpdateStatusFlags),                      // MVN<c>[S]
     MoveTop(LargeImmediateArguments),                               // MOVT<c>
     Store(LoadStoreArguments),                                      // STR[B]<c>, PUSH<c>
     Subtract(ReadWriteDataArguments, UpdateStatusFlags),            // SUB<c>[S]

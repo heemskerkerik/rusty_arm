@@ -21,10 +21,12 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
     match instr.1 {
         InstructionData::Add(ref args, ref update_status) => execute_add(context, &args, &update_status),
         InstructionData::Branch(ref address, ref link) => execute_branch(context, &address, &link),
+        InstructionData::BranchExchange(ref register) => execute_branch_exchange(context, &register),
         InstructionData::Compare(ref args) => execute_compare(context, &args),
         InstructionData::Load(ref args) => execute_load(context, &args),
         InstructionData::Move(ref args, ref update_status) => execute_move(context, &args, &update_status),
         InstructionData::MoveHalfWord(ref args) => execute_move_half_word(context, &args),
+        InstructionData::MoveNot(ref args, ref update_status) => execute_move_not(context, &args, &update_status),
         InstructionData::Store(ref args) => execute_store(context, &args),
         InstructionData::Subtract(ref args, ref update_status) => execute_subtract(context, &args, &update_status),
         _ => panic!("Instruction {:?} not yet implemented", instr.1),
@@ -54,15 +56,23 @@ fn is_condition_met(context: &CpuContext, cond: &Condition) -> bool {
 }
 
 fn execute_move(context: &mut CpuContext, args: &DataArguments, update_status: &UpdateStatusFlags) {
-    let (register, value, carry) = match args {
-        DataArguments::Immediate(args) => {
-            (args.register, args.immediate, if args.rotate == 0 { context.get_status().carry } else { args.carry })
-        },
-        DataArguments::Register(args) => {
-            let (operand, carry) = apply_shift_operand(context, &args.operand_register, &args.shift_type, &args.shift_operand);
-            (args.register, operand, carry)
-        }
-    };
+    let (register, value, carry) = get_data_arguments(context, args);
+
+    context.set_register(register.into(), value);
+
+    if let UpdateStatusFlags::UpdateStatusFlags = *update_status {
+        context.set_status(
+            Some(get_sign(value)), 
+            Some(value == 0), 
+            Some(carry), 
+            None
+        );
+    }
+}
+
+fn execute_move_not(context: &mut CpuContext, args: &DataArguments, update_status: &UpdateStatusFlags) {
+    let (register, value, carry) = get_data_arguments(context, args);
+    let value = !value;
 
     context.set_register(register.into(), value);
 
@@ -141,15 +151,7 @@ fn execute_subtract(context: &mut CpuContext, args: &ReadWriteDataArguments, upd
 }
 
 fn execute_compare(context: &mut CpuContext, args: &DataArguments) {
-    let (register, operand) = match args {
-        DataArguments::Immediate(args) => {
-            (args.register, args.immediate)
-        },
-        DataArguments::Register(args) => {
-            let (operand, _) = apply_shift_operand(context, &args.operand_register, &args.shift_type, &args.shift_operand);
-            (args.register, operand)
-        }
-    };
+    let (register, operand, _) = get_data_arguments(context, args);
 
     let original = context.get_register(register.into());
     let result = original.wrapping_sub(operand);
@@ -182,6 +184,11 @@ fn execute_branch(context: &mut CpuContext, address: &i32, link: &BranchLinkFlag
     }
 }
 
+fn execute_branch_exchange(context: &mut CpuContext, register: &Register) {
+    let destination_address = context.get_register((*register).into());
+    context.set_program_counter(destination_address);
+}
+
 fn execute_load(context: &mut CpuContext, args: &LoadStoreArguments) {
     execute_load_store(context, args, get_load_data, load_data);
 }
@@ -194,7 +201,8 @@ fn execute_load_store(
     context: &mut CpuContext,
     args: &LoadStoreArguments, 
     get_data: fn(&CpuContext, u32, &LoadStoreArguments) -> u32,
-    action: fn(&mut CpuContext, u32, u32, &LoadStoreArguments)) {
+    action: fn(&mut CpuContext, u32, u32, &LoadStoreArguments)
+) {
     let address = context.get_register(args.address_register.into());
     let offset: u32 = get_load_store_offset(context, &args.offset);
     let address = match args.indexing_type {
@@ -248,6 +256,18 @@ fn execute_move_half_word(context: &mut CpuContext, args: &LargeImmediateArgumen
 
 fn get_sign(value: u32) -> bool {
     value & 0x80000000 != 0
+}
+
+fn get_data_arguments(context: &CpuContext, args: &DataArguments) -> (Register, u32, bool) {
+    match args {
+        DataArguments::Immediate(args) => {
+            (args.register, args.immediate, if args.rotate == 0 { context.get_status().carry } else { args.carry })
+        },
+        DataArguments::Register(args) => {
+            let (operand, carry) = apply_shift_operand(context, &args.operand_register, &args.shift_type, &args.shift_operand);
+            (args.register, operand, carry)
+        }
+    }
 }
 
 fn apply_shift_operand(context: &CpuContext, register: &u4, shift_type: &ShiftType, shift_operand: &ShiftOperand) -> (u32, bool) {
