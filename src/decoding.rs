@@ -47,7 +47,7 @@ fn decode_condition(encoded_instruction: u32) -> Condition {
         GREATER_THAN_CONDITION => Condition::GreaterThan,
         LESS_THAN_OR_EQUAL_CONDITION => Condition::LessThanOrEqual,
         ALWAYS_CONDITION => Condition::Always,
-        _ => panic!("Unknown condition {:0>2}", condition_byte),
+        _ => panic!("Unknown condition {:0>2X} (instruction: {:0>8X})", condition_byte, encoded_instruction),
     }
 }
 
@@ -65,7 +65,7 @@ fn decode_data_processing_instruction(encoded_instruction: u32) -> Result<Instru
         MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
         MOVE_HALFWORD_OPCODE => Ok(InstructionData::MoveHalfWord(decode_large_immediate_arguments(encoded_instruction))),
         SUBTRACT_OPCODE => Ok(InstructionData::Subtract(decode_read_write_arguments(encoded_instruction), update_status_flag)),
-        _ => Err(format!("Unknown opcode {:0>2X}", opcode))
+        _ => Err(format!("Unknown opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
     }
 }
 
@@ -267,7 +267,7 @@ fn decode_register_shift_arguments(encoded_instruction: u32) -> (Register, Shift
         SHIFT_TYPE_LOGICAL_SHIFT_RIGHT => ShiftType::LogicalShiftRight,
         SHIFT_TYPE_ARITHMETIC_SHIFT_RIGHT => ShiftType::ArithmeticShiftRight,
         SHIFT_TYPE_ROTATE_RIGHT => ShiftType::RotateRight,
-        _ => panic!("Unknown shift type {:0>2X}", shift_type),
+        _ => panic!("Unknown shift type {:0>2X} (instruction: {:0>8X})", shift_type, encoded_instruction),
     };
 
     (operand_register, shift_type, shift_operand)
