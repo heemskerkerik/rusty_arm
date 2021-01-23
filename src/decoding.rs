@@ -1,7 +1,7 @@
 use core::panic;
 use instructions::*;
 
-use ux::{self, u12, u4, u5};
+use ux::{self, u12, u24, u4, u5};
 
 use crate::instructions;
 
@@ -67,6 +67,7 @@ fn decode_data_processing_instruction(encoded_instruction: u32) -> Result<Instru
         MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
         MOVE_HALFWORD_OPCODE => Ok(InstructionData::MoveHalfWord(decode_large_immediate_arguments(encoded_instruction))),
         MOVE_NOT_OPCODE => Ok(InstructionData::MoveNot(decode_write_arguments(encoded_instruction), update_status_flag)),
+        OR_OPCODE => Ok(InstructionData::Or(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         SUBTRACT_OPCODE => Ok(InstructionData::Subtract(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         _ => Err(format!("Unknown opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
     }
@@ -324,6 +325,7 @@ const COMPARE_OPCODE: u8 = 0xa;
 const MOVE_OPCODE: u8 = 0xd;
 const MOVE_HALFWORD_OPCODE: u8 = 0x8;
 const MOVE_NOT_OPCODE: u8 = 0xf;
+const OR_OPCODE: u8 = 0xc;
 const SUBTRACT_OPCODE: u8 = 0x2;
 
 const SHIFT_TYPE_LOGICAL_SHIFT_LEFT: u8 =       0b0000000;

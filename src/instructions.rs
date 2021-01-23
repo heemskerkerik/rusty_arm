@@ -161,6 +161,7 @@ pub enum InstructionData {
     MoveNot(DataArguments, UpdateStatusFlags),                      // MVN<c>[S]
     MoveTop(LargeImmediateArguments),                               // MOVT<c>
     Store(LoadStoreArguments),                                      // STR[B]<c>, PUSH<c>
+    Or(ReadWriteDataArguments, UpdateStatusFlags),                  // ORR<c>[S]
     Subtract(ReadWriteDataArguments, UpdateStatusFlags),            // SUB<c>[S]
 }
 

@@ -28,6 +28,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         InstructionData::Move(ref args, ref update_status) => execute_move(context, &args, &update_status),
         InstructionData::MoveHalfWord(ref args) => execute_move_half_word(context, &args),
         InstructionData::MoveNot(ref args, ref update_status) => execute_move_not(context, &args, &update_status),
+        InstructionData::Or(ref args, ref update_status) => execute_or(context, &args, &update_status),
         InstructionData::Store(ref args) => execute_store(context, &args),
         InstructionData::Subtract(ref args, ref update_status) => execute_subtract(context, &args, &update_status),
         _ => panic!("Instruction {:?} at {:0>8X} not yet implemented", instr.1, program_counter),
@@ -106,22 +107,9 @@ fn execute_add_core(
     update_status: &UpdateStatusFlags,
     modify_value: fn(&CpuContext, &ReadWriteDataArguments, u32) -> u32
 ) {
-    let (destination_register, original, result, operand) = match args {
-        ReadWriteDataArguments::Immediate(args) => {
-            let original = context.get_register(args.source_register.into());
-            let result = original.wrapping_add(args.immediate);
+    let (destination_register, original, operand, _) = get_read_write_data_arguments(context, args);
 
-            (args.destination_register, original, result, args.immediate)
-        },
-        ReadWriteDataArguments::Register(args) => {
-            let original = context.get_register(args.source_register.into());
-            let (operand, _) = apply_shift_operand(context, &args.operand_register, &args.shift_type, &args.shift_operand);
-            let result = original.wrapping_add(operand);
-
-            (args.destination_register, original, result, operand)
-        }
-    };
-
+    let result = original.wrapping_add(operand);
     let result = modify_value(context, args, result);
 
     context.set_register(destination_register.into(), result);
@@ -140,21 +128,9 @@ fn execute_add_core(
 }
 
 fn execute_subtract(context: &mut CpuContext, args: &ReadWriteDataArguments, update_status: &UpdateStatusFlags) {
-    let (destination_register, original, result, operand) = match args {
-        ReadWriteDataArguments::Immediate(args) => {
-            let original = context.get_register(args.source_register.into());
-            let result = original.wrapping_sub(args.immediate);
+    let (destination_register, original, operand, _) = get_read_write_data_arguments(context, args);
 
-            (args.destination_register, original, result, args.immediate)
-        },
-        ReadWriteDataArguments::Register(args) => {
-            let original = context.get_register(args.source_register.into());
-            let (operand, _) = apply_shift_operand(context, &args.operand_register, &args.shift_type, &args.shift_operand);
-            let result = original.wrapping_sub(operand);
-
-            (args.destination_register, original, result, operand)
-        }
-    };
+    let result = original.wrapping_sub(operand);
 
     context.set_register(destination_register.into(), result);
 
@@ -167,6 +143,22 @@ fn execute_subtract(context: &mut CpuContext, args: &ReadWriteDataArguments, upd
                 get_sign(original) != get_sign(operand)
              && get_sign(original) != get_sign(result)
             )
+        );
+    }
+}
+
+fn execute_or(context: &mut CpuContext, args: &ReadWriteDataArguments, update_status: &UpdateStatusFlags) {
+    let (destination_register, original, operand, carry) = get_read_write_data_arguments(context, args);
+
+    let result = original | operand;
+    context.set_register(destination_register.into(), result);
+
+    if let UpdateStatusFlags::UpdateStatusFlags = *update_status {
+        context.set_status(
+            Some(get_sign(result)),
+            Some(result == 0),
+            Some(carry),
+            None
         );
     }
 }
