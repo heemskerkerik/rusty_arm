@@ -1,4 +1,4 @@
-use ux::{u12, u5, u4};
+use ux::{u12, u5, u4, u24};
 
 pub type Register = u4;
 
@@ -162,6 +162,7 @@ pub enum InstructionData {
     MoveTop(LargeImmediateArguments),                               // MOVT<c>
     Store(LoadStoreArguments),                                      // STR[B]<c>, PUSH<c>
     Or(ReadWriteDataArguments, UpdateStatusFlags),                  // ORR<c>[S]
+    ServiceCall(u24),                                               // SWI/SVC
     Subtract(ReadWriteDataArguments, UpdateStatusFlags),            // SUB<c>[S]
 }
 

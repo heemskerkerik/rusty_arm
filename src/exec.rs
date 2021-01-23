@@ -1,6 +1,7 @@
 use core::panic;
+use std::fmt::write;
 
-use ux::u4;
+use ux::{u24, u4};
 
 use crate::{context::*, instructions::*};
 
@@ -29,6 +30,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         InstructionData::MoveHalfWord(ref args) => execute_move_half_word(context, &args),
         InstructionData::MoveNot(ref args, ref update_status) => execute_move_not(context, &args, &update_status),
         InstructionData::Or(ref args, ref update_status) => execute_or(context, &args, &update_status),
+        InstructionData::ServiceCall(ref arg) => execute_service_call(context, &arg),
         InstructionData::Store(ref args) => execute_store(context, &args),
         InstructionData::Subtract(ref args, ref update_status) => execute_subtract(context, &args, &update_status),
         _ => panic!("Instruction {:?} at {:0>8X} not yet implemented", instr.1, program_counter),
@@ -265,6 +267,20 @@ fn store_data(context: &mut CpuContext, address: u32, data: u32, _: &LoadStoreAr
 
 fn execute_move_half_word(context: &mut CpuContext, args: &LargeImmediateArguments) {
     context.set_register(args.register.into(), args.immediate as u32);
+}
+
+fn execute_service_call(context: &mut CpuContext, arg: &u24) {
+    if *arg != u24::new(0) {
+        panic!("Unsupported software interrupt {:0>6X}", *arg);
+    }
+
+    const SERVICE_CALL_REGISTER: u8 = 7;
+    let service_call = context.get_register(SERVICE_CALL_REGISTER);
+
+    match service_call {
+        1 => context.halt(),
+        _ => panic!("Unsupported service")
+    }
 }
 
 fn get_sign(value: u32) -> bool {
