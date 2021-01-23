@@ -15,7 +15,6 @@ use crate::context::CpuContext;
 fn main() {
     let mut context = CpuContext::create();
 
-    println!("Args: {:?}", env::args().collect::<Vec<String>>());
     let file_name = env::args().skip(1).next();
 
     let file_name = match file_name {
@@ -28,12 +27,18 @@ fn main() {
 
     file::read_memory_from_file(&mut context, &file_name);
 
+    let breakpoints = [];
+
     let mut stopwatch = Stopwatch::start_new();
 
     while !context.is_halted() {
         let program_counter = context.get_program_counter();
         let word = context.read_word(program_counter);
         let instr = decode(word).unwrap();
+
+        if breakpoints.contains(&program_counter) {
+            println!("Breakpoint: {:0>8X}", program_counter);
+        }
 
         execute(&mut context, instr);
     }
