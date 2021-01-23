@@ -113,9 +113,21 @@ pub enum LoadStoreOffset {
 }
 
 #[derive(Debug)]
-pub enum LoadStoreRegularDataSize {
+pub enum LoadDataSize {
     Word,
     Byte,
+    DoubleWord,
+    UnsignedHalfWord,
+    SignedByte,
+    SignedHalfWord,
+}
+
+#[derive(Debug)]
+pub enum StoreDataSize {
+    Word,
+    Byte,
+    DoubleWord,
+    HalfWord,
 }
 
 #[derive(Debug)]
@@ -137,8 +149,18 @@ pub enum LoadStoreOffsetDirection {
 }
 
 #[derive(Debug)]
+pub struct LoadArguments {
+    pub data_size: LoadDataSize,
+    pub common_arguments: LoadStoreArguments,
+}
+#[derive(Debug)]
+pub struct StoreArguments {
+    pub data_size: StoreDataSize,
+    pub common_arguments: LoadStoreArguments,
+}
+
+#[derive(Debug)]
 pub struct LoadStoreArguments {
-    pub data_size: LoadStoreRegularDataSize,
     pub indexing_type: LoadStoreIndexingType,
     pub write_back: LoadStoreWriteBackFlag,
     pub offset_direction: LoadStoreOffsetDirection,
@@ -155,14 +177,14 @@ pub enum InstructionData {
     Branch(i32, BranchLinkFlag),                                    // B[L]<c>
     BranchExchange(Register),                                       // BX<c>
     Compare(DataArguments),                                         // CMP<c>
-    Load(LoadStoreArguments),                                       // LDR[B]<c>, POP<c>
+    Load(LoadArguments),                                            // LDR[B]<c>, LDRH<c>, LDRSH<c>, LDRD<c>, LDRSB<c>, POP<c>
     Move(DataArguments, UpdateStatusFlags),                         // MOV<c>[S]
     MoveHalfWord(LargeImmediateArguments),                          // MOVW<c>
     MoveNot(DataArguments, UpdateStatusFlags),                      // MVN<c>[S]
     MoveTop(LargeImmediateArguments),                               // MOVT<c>
-    Store(LoadStoreArguments),                                      // STR[B]<c>, PUSH<c>
     Or(ReadWriteDataArguments, UpdateStatusFlags),                  // ORR<c>[S]
     ServiceCall(u24),                                               // SWI/SVC
+    Store(StoreArguments),                                          // STR[B]<c>, STRH<c>, STRSH<c>, STRD<c>, STRSB<c>, PUSH<c>
     Subtract(ReadWriteDataArguments, UpdateStatusFlags),            // SUB<c>[S]
 }
 

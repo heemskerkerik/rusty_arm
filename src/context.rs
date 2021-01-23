@@ -101,6 +101,29 @@ impl CpuContext {
         }
     }
 
+    pub fn read_byte(&self, address: u32) -> u8 {
+        let start_address = address as usize;
+        let end_address = start_address + size_of::<u32>();
+        let slice = &self.memory[start_address..end_address];
+        let pointer = slice.as_ptr();
+
+        unsafe {
+            *pointer
+        }
+    }
+
+    pub fn read_half_word(&self, address: u32) -> u16 {
+        let start_address = address as usize;
+        let end_address = start_address + size_of::<u32>();
+        let slice = &self.memory[start_address..end_address];
+        let pointer = slice.as_ptr();
+        let pointer_u16 = pointer as *const u16;
+
+        unsafe {
+            *pointer_u16
+        }
+    }
+
     pub fn write_word(&mut self, address: u32, value: u32) {
         let start_address = address as usize;
         let end_address = start_address + size_of::<u32>();
@@ -110,6 +133,29 @@ impl CpuContext {
 
         unsafe {
             *pointer_u32 = value
+        }
+    }
+
+    pub fn write_byte(&mut self, address: u32, value: u8) {
+        let start_address = address as usize;
+        let end_address = start_address + size_of::<u32>();
+        let slice = &mut self.memory[start_address..end_address];
+        let pointer = slice.as_mut_ptr();
+
+        unsafe {
+            *pointer = value
+        }
+    }
+
+    pub fn write_half_word(&mut self, address: u32, value: u16) {
+        let start_address = address as usize;
+        let end_address = start_address + size_of::<u32>();
+        let slice = &mut self.memory[start_address..end_address];
+        let pointer = slice.as_mut_ptr();
+        let pointer_u16 = pointer as *mut u16;
+
+        unsafe {
+            *pointer_u16 = value
         }
     }
 

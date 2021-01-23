@@ -204,19 +204,20 @@ fn execute_branch_exchange(context: &mut CpuContext, register: &Register) {
     context.set_program_counter(destination_address);
 }
 
-fn execute_load(context: &mut CpuContext, args: &LoadStoreArguments) {
-    execute_load_store(context, args, get_load_data, load_data);
+fn execute_load(context: &mut CpuContext, args: &LoadArguments) {
+    execute_load_store(context, args, &args.common_arguments, get_load_data, load_data);
 }
 
-fn execute_store(context: &mut CpuContext, args: &LoadStoreArguments) {
-    execute_load_store(context, args, get_store_data, store_data);
+fn execute_store(context: &mut CpuContext, args: &StoreArguments) {
+    execute_load_store(context, args, &args.common_arguments, get_store_data, store_data);
 }
 
-fn execute_load_store(
+fn execute_load_store<A>(
     context: &mut CpuContext,
-    args: &LoadStoreArguments, 
-    get_data: fn(&CpuContext, u32, &LoadStoreArguments) -> u32,
-    action: fn(&mut CpuContext, u32, u32, &LoadStoreArguments)
+    full_args: &A,
+    args: &LoadStoreArguments,
+    get_data: fn(&CpuContext, u32, &A) -> u32,
+    action: fn(&mut CpuContext, u32, u32, &A)
 ) {
     let address = context.get_register(args.address_register.into());
     let offset: u32 = get_load_store_offset(context, &args.offset);
@@ -225,7 +226,7 @@ fn execute_load_store(
         LoadStoreIndexingType::PostIndexed => address,
     };
 
-    let data = get_data(context, address, args);
+    let data = get_data(context, address, full_args);
 
     if let LoadStoreWriteBackFlag::WriteBack = args.write_back {
         let address = match args.indexing_type {
@@ -235,33 +236,34 @@ fn execute_load_store(
         context.set_register(args.address_register.into(), address);
     }
 
-    action(context, address, data, args);
+    action(context, address, data, full_args);
 }
 
-fn get_load_data(context: &CpuContext, address: u32, args: &LoadStoreArguments) -> u32 {
-    let data = context.read_word(address);
+fn get_load_data(context: &CpuContext, address: u32, args: &LoadArguments) -> u32 {
     match args.data_size {
-        LoadStoreRegularDataSize::Word => data,
-        LoadStoreRegularDataSize::Byte => data & 0x000000ff,
+        LoadDataSize::Word => context.read_word(address),
+        LoadDataSize::Byte => context.read_byte(address) as u32,
+        LoadDataSize::UnsignedHalfWord => context.read_half_word(address) as u32,
+        _ => panic!("Data type {:?} not supported", args.data_size)
     }
 }
 
-fn load_data(context: &mut CpuContext, _: u32, data: u32, args: &LoadStoreArguments) {
-    context.set_register(args.value_register.into(), data);
+fn load_data(context: &mut CpuContext, _: u32, data: u32, args: &LoadArguments) {
+    context.set_register(args.common_arguments.value_register.into(), data);
 }
 
-fn get_store_data(context: &CpuContext, address: u32, args: &LoadStoreArguments) -> u32 {
-    let data = context.get_register(args.value_register.into());
+fn get_store_data(context: &CpuContext, _: u32, args: &StoreArguments) -> u32 {
+    let data = context.get_register(args.common_arguments.value_register.into());
+    data
+}
+
+fn store_data(context: &mut CpuContext, address: u32, data: u32, args: &StoreArguments) {
     match args.data_size {
-        LoadStoreRegularDataSize::Word => data,
-        LoadStoreRegularDataSize::Byte => {
-            let current_word = context.read_word(address);
-            (current_word & 0xffffff00) | (data & 0x000000ff)
-        },
+        StoreDataSize::Word => context.write_word(address, data),
+        StoreDataSize::Byte => context.write_byte(address, (data & 0x000000ff) as u8),
+        StoreDataSize::HalfWord => context.write_half_word(address, (data & 0x0000ffff) as u16),
+        _ => panic!("Data type {:?} not supported", args.data_size),
     }
-}
-
-fn store_data(context: &mut CpuContext, address: u32, data: u32, _: &LoadStoreArguments) {
     context.write_word(address, data);
 }
 
@@ -295,6 +297,21 @@ fn get_data_arguments(context: &CpuContext, args: &DataArguments) -> (Register, 
         DataArguments::Register(args) => {
             let (operand, carry) = apply_shift_operand(context, &args.operand_register, &args.shift_type, &args.shift_operand);
             (args.register, operand, carry)
+        }
+    }
+}
+
+fn get_read_write_data_arguments(context: &CpuContext, args: &ReadWriteDataArguments) -> (Register, u32, u32, bool) {
+    match args {
+        ReadWriteDataArguments::Immediate(args) => {
+            let original = context.get_register(args.source_register.into());
+            (args.destination_register, original, args.immediate, args.carry)
+        },
+        ReadWriteDataArguments::Register(args) => {
+            let original = context.get_register(args.source_register.into());
+            let (operand, carry) = apply_shift_operand(context, &args.operand_register, &args.shift_type, &args.shift_operand);
+
+            (args.destination_register, original, operand, carry)
         }
     }
 }

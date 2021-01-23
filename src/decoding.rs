@@ -11,13 +11,24 @@ pub fn decode(encoded_instruction: u32) -> Result<Instruction, String> {
 
     match instruction_class {
         BRANCH_INSTRUCTION_CLASS => Ok((condition, decode_branch(encoded_instruction))),
-        DATA_PROCESSING_IMMEDIATE_INSTRUCTION_CLASS | DATA_PROCESSING_REGISTER_INSTRUCTION_CLASS => {
+        DATA_PROCESSING_IMMEDIATE_INSTRUCTION_CLASS => {
             let data = decode_data_processing_instruction(encoded_instruction)?;
 
             Ok((condition, data))
         },
+        DATA_PROCESSING_REGISTER_INSTRUCTION_CLASS => {
+            let extra_loads_stores = encoded_instruction & EXTRA_LOAD_STORES_FLAG == EXTRA_LOAD_STORES_FLAG;
+
+            if !extra_loads_stores {
+                let data = decode_data_processing_instruction(encoded_instruction)?;
+                Ok((condition, data))
+            } else {
+                let data = decode_extra_load_store(encoded_instruction)?;
+                Ok((condition, data))
+            }
+        },
         LOAD_STORE_IMMEDIATE_INSTRUCTION_CLASS | LOAD_STORE_REGISTER_INSTRUCTION_CLASS => {
-            let data = decode_load_store(encoded_instruction);
+            let data = decode_regular_load_store(encoded_instruction);
 
             Ok((condition, data))
         },
@@ -88,11 +99,11 @@ fn decode_branch(encoded_instruction: u32) -> InstructionData {
     InstructionData::Branch(adjusted_destination_address, link_flag)
 }
 
-fn decode_load_store(encoded_instruction: u32) -> InstructionData {
+fn decode_regular_load_store(encoded_instruction: u32) -> InstructionData {
     let immediate_mode = encoded_instruction & 0x02000000 == 0;
     let indexing_type = if encoded_instruction & 0x01000000 != 0 { LoadStoreIndexingType::PreIndexed } else { LoadStoreIndexingType::PostIndexed };
     let offset_direction = if encoded_instruction & 0x00800000 != 0 { LoadStoreOffsetDirection::Positive } else { LoadStoreOffsetDirection::Negative };
-    let data_size = if encoded_instruction & 0x00400000 != 0 { LoadStoreRegularDataSize::Byte } else { LoadStoreRegularDataSize::Word };
+    let data_size_is_byte = encoded_instruction & 0x00400000 != 0;
     let write_back = if encoded_instruction & 0x00200000 != 0 { LoadStoreWriteBackFlag::WriteBack } else { LoadStoreWriteBackFlag::DoNotWriteBack };
     let load_operation = encoded_instruction & 0x00100000 != 0;
 
@@ -133,8 +144,7 @@ fn decode_load_store(encoded_instruction: u32) -> InstructionData {
         )
     };
 
-    let arguments = LoadStoreArguments {
-        data_size,
+    let common_arguments = LoadStoreArguments {
         indexing_type,
         offset_direction,
         write_back,
@@ -144,9 +154,80 @@ fn decode_load_store(encoded_instruction: u32) -> InstructionData {
     };
 
     if load_operation {
-        InstructionData::Load(arguments)
+        InstructionData::Load(LoadArguments {
+            data_size: if data_size_is_byte { LoadDataSize::Byte } else { LoadDataSize::Word },
+            common_arguments
+        })
     } else {
-        InstructionData::Store(arguments)
+        InstructionData::Store(StoreArguments {
+            data_size: if data_size_is_byte { StoreDataSize::Byte } else { StoreDataSize::Word },
+            common_arguments
+        })
+    }
+}
+
+fn decode_extra_load_store(encoded_instruction: u32) -> Result<InstructionData, String> {
+    let indexing_type = if encoded_instruction & 0x01000000 != 0 { LoadStoreIndexingType::PreIndexed } else { LoadStoreIndexingType::PostIndexed };
+    let offset_direction = if encoded_instruction & 0x00800000 != 0 { LoadStoreOffsetDirection::Positive } else { LoadStoreOffsetDirection::Negative };
+    let immediate_mode = encoded_instruction & 0x00400000 != 0;
+    let write_back = if encoded_instruction & 0x00200000 != 0 { LoadStoreWriteBackFlag::WriteBack } else { LoadStoreWriteBackFlag::DoNotWriteBack };
+    let load_operation = encoded_instruction & 0x00100000 != 0;
+    let data_size = (encoded_instruction & 0x00000060) >> 5;
+
+    // if post-indexing is used, the write-back bit will be zero, but write-back should still be enabled
+    let write_back = if let LoadStoreIndexingType::PostIndexed = indexing_type { LoadStoreWriteBackFlag::WriteBack } else { write_back };
+
+    let address_register: Register = u4::new(((encoded_instruction & 0x000f0000) >> 16) as u8);
+    let value_register: Register = u4::new(((encoded_instruction & 0x0000f000) >> 12) as u8);
+
+    let offset = if immediate_mode {
+        let immediate_low = (encoded_instruction & 0x0000000f) as u8;
+        let immediate_high = ((encoded_instruction & 0x00000f00) >> 4) as u8;
+        let immediate = u12::new((immediate_low | immediate_high) as u16);
+        LoadStoreOffset::Immediate(immediate)
+    } else {
+        let register = u4::new((encoded_instruction & 0x0000000f) as u8);
+
+        LoadStoreOffset::Register(
+            LoadStoreRegisterOffset {
+                register,
+                shift_type: ShiftType::LogicalShiftLeft,
+                shift_operand: u5::new(0),
+            }
+        )
+    };
+
+    let common_arguments = LoadStoreArguments {
+        indexing_type,
+        offset_direction,
+        write_back,
+        value_register,
+        address_register,
+        offset
+    };
+
+    return match (load_operation, data_size) {
+        (false, 0b01) => get_store_instruction(StoreDataSize::HalfWord, common_arguments),
+        (false, 0b10) => get_load_instruction(LoadDataSize::DoubleWord, common_arguments),
+        (false, 0b11) => get_store_instruction(StoreDataSize::DoubleWord, common_arguments),
+        (true, 0b01) => get_load_instruction(LoadDataSize::UnsignedHalfWord, common_arguments),
+        (true, 0b10) => get_load_instruction(LoadDataSize::SignedByte, common_arguments),
+        (true, 0b11) => get_load_instruction(LoadDataSize::SignedHalfWord, common_arguments),
+        _ => Err(String::from("Unrecognized data size")),
+    };
+
+    fn get_load_instruction(data_size: LoadDataSize, args: LoadStoreArguments) -> Result<InstructionData, String> {
+        Ok(InstructionData::Load(LoadArguments {
+            data_size,
+            common_arguments: args
+        }))
+    }
+
+    fn get_store_instruction(data_size: StoreDataSize, args: LoadStoreArguments) -> Result<InstructionData, String> {
+        Ok(InstructionData::Store(StoreArguments {
+            data_size,
+            common_arguments: args
+        }))
     }
 }
 
@@ -319,6 +400,7 @@ const DATA_PROCESSING_IMMEDIATE_INSTRUCTION_CLASS: u32 = 0x02000000;
 const LOAD_STORE_IMMEDIATE_INSTRUCTION_CLASS: u32 = 0x04000000;
 const LOAD_STORE_REGISTER_INSTRUCTION_CLASS: u32 = 0x05000000;
 const SERVICE_CALL_INSTRUCTION_CLASS: u32 = 0x0f000000;
+const EXTRA_LOAD_STORES_FLAG: u32 = 0x00000090;
 const UPDATE_STATUS_BIT: u32 = 0x00100000;
 const IMMEDIATE_MODE_BIT: u32 = 0x02000000;
 const OPCODE_MASK: u32 = 0x01e00000;
