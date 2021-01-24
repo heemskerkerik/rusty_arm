@@ -12,34 +12,20 @@
                 "args": [
                     "build",
                     "--bin=rusty_arm",
-                    "--package=rusty_arm"
+                    "--package=rusty_arm",
+                    "--features",
+                    "print_instructions,breakpoints,memory_watch"
                 ],
                 "filter": {
                     "name": "rusty_arm",
                     "kind": "bin"
                 }
             },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'rusty_arm'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=rusty_arm",
-                    "--package=rusty_arm"
-                ],
-                "filter": {
-                    "name": "rusty_arm",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
+            "args": [ "file.s.elf" ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_BACKTRACE": "1"
+            }
         }
     ]
 }

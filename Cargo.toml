@@ -13,3 +13,5 @@ readonly="0.2.0"
 
 [features]
 print_instructions=[]
+breakpoints=[]
+memory_watch=[]

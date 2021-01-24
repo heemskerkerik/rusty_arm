@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use std::{mem::size_of, ops::RangeInclusive};
 
 pub struct CpuContext {
     registers: [u32; 16],
@@ -171,7 +171,7 @@ impl CpuContext {
         let mut result = String::new();
 
         for i in 0..=15 {
-            result.push_str(&format!("R{}: {:0>8X}\n", i, self.registers[i]))
+            result.push_str(&format!("R{}: {:0>8X}    ", i, self.registers[i]))
         }
 
         result
@@ -186,6 +186,17 @@ impl CpuContext {
         result.push(if status.zero { '1' } else { '0' });
         result.push(if status.carry { '1' } else { '0' });
         result.push(if status.overflow { '1' } else { '0' });
+
+        result
+    }
+
+    pub fn debug_get_memory_range(&self, range: &RangeInclusive<u32>) -> String {
+        let mut result = String::new();
+
+        for a in range.clone().into_iter() {
+            let byte = self.read_byte(a);
+            result.push_str(&format!("{:0>2X} ", byte));
+        }
 
         result
     }
