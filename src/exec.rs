@@ -264,7 +264,6 @@ fn store_data(context: &mut CpuContext, address: u32, data: u32, args: &StoreArg
         StoreDataSize::HalfWord => context.write_half_word(address, (data & 0x0000ffff) as u16),
         _ => panic!("Data type {:?} not supported", args.data_size),
     }
-    context.write_word(address, data);
 }
 
 fn execute_move_half_word(context: &mut CpuContext, args: &LargeImmediateArguments) {
