@@ -12,7 +12,8 @@ pub fn decode(encoded_instruction: u32) -> Result<Instruction, String> {
     match instruction_class {
         BRANCH_INSTRUCTION_CLASS => Ok((condition, decode_branch(encoded_instruction))),
         DATA_PROCESSING_IMMEDIATE_INSTRUCTION_CLASS => {
-            let data = decode_data_processing_instruction(encoded_instruction)?;
+            let extra_instructions = encoded_instruction & DATA_PROCESSING_IMMEDIATE_EXTRA_INSTRUCTIONS_MASK == DATA_PROCESSING_IMMEDIATE_EXTRA_INSTRUCTIONS_VALUE;
+            let data = if !extra_instructions { decode_data_processing_instruction(encoded_instruction)? } else { decode_extra_data_processing_immediate_instruction(encoded_instruction)? };
 
             Ok((condition, data))
         },
@@ -80,10 +81,19 @@ fn decode_data_processing_instruction(encoded_instruction: u32) -> Result<Instru
         BRANCH_EXCHANGE_OPCODE => Ok(InstructionData::BranchExchange(decode_branch_exchange_arguments(encoded_instruction))),
         COMPARE_OPCODE => Ok(InstructionData::Compare(decode_read_arguments(encoded_instruction))),
         MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
-        MOVE_HALFWORD_OPCODE => Ok(InstructionData::MoveHalfWord(decode_large_immediate_arguments(encoded_instruction))),
         MOVE_NOT_OPCODE => Ok(InstructionData::MoveNot(decode_write_arguments(encoded_instruction), update_status_flag)),
         OR_OPCODE => Ok(InstructionData::Or(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         SUBTRACT_OPCODE => Ok(InstructionData::Subtract(decode_read_write_arguments(encoded_instruction), update_status_flag)),
+        _ => Err(format!("Unknown opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
+    }
+}
+
+fn decode_extra_data_processing_immediate_instruction(encoded_instruction: u32) -> Result<InstructionData, String> {
+    let opcode = ((encoded_instruction & OPCODE_MASK) >> 21) as u8;
+
+    match opcode {
+        MOVE_HALFWORD_OPCODE => Ok(InstructionData::MoveHalfWord(decode_large_immediate_arguments(encoded_instruction))),
+        MOVE_HALFWORD_TOP_OPCODE => Ok(InstructionData::MoveHalfWordTop(decode_large_immediate_arguments(encoded_instruction))),
         _ => Err(format!("Unknown opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
     }
 }
@@ -401,6 +411,8 @@ const LOAD_STORE_IMMEDIATE_INSTRUCTION_CLASS: u32 = 0x04000000;
 const LOAD_STORE_REGISTER_INSTRUCTION_CLASS: u32 = 0x05000000;
 const SUPERVISOR_CALL_INSTRUCTION_CLASS: u32 = 0x0e000000;
 const EXTRA_LOAD_STORES_FLAG: u32 = 0x00000090;
+const DATA_PROCESSING_IMMEDIATE_EXTRA_INSTRUCTIONS_MASK: u32 = 0x01900000;
+const DATA_PROCESSING_IMMEDIATE_EXTRA_INSTRUCTIONS_VALUE: u32 = 0x01000000;
 const UPDATE_STATUS_BIT: u32 = 0x00100000;
 const IMMEDIATE_MODE_BIT: u32 = 0x02000000;
 const OPCODE_MASK: u32 = 0x01e00000;
@@ -411,6 +423,7 @@ const BRANCH_EXCHANGE_OPCODE: u8 = 0x9;
 const COMPARE_OPCODE: u8 = 0xa;
 const MOVE_OPCODE: u8 = 0xd;
 const MOVE_HALFWORD_OPCODE: u8 = 0x8;
+const MOVE_HALFWORD_TOP_OPCODE: u8 = 0xa;
 const MOVE_NOT_OPCODE: u8 = 0xf;
 const OR_OPCODE: u8 = 0xc;
 const SUBTRACT_OPCODE: u8 = 0x2;

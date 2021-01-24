@@ -1,5 +1,4 @@
 use core::panic;
-use std::fmt::write;
 
 use ux::{u24, u4};
 
@@ -28,6 +27,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         InstructionData::Load(ref args) => execute_load(context, &args),
         InstructionData::Move(ref args, ref update_status) => execute_move(context, &args, &update_status),
         InstructionData::MoveHalfWord(ref args) => execute_move_half_word(context, &args),
+        InstructionData::MoveHalfWordTop(ref args) => execute_move_half_word_top(context, &args),
         InstructionData::MoveNot(ref args, ref update_status) => execute_move_not(context, &args, &update_status),
         InstructionData::Or(ref args, ref update_status) => execute_or(context, &args, &update_status),
         InstructionData::SupervisorCall(ref arg) => execute_supervisor_call(context, &arg),
@@ -268,6 +268,15 @@ fn store_data(context: &mut CpuContext, address: u32, data: u32, args: &StoreArg
 
 fn execute_move_half_word(context: &mut CpuContext, args: &LargeImmediateArguments) {
     context.set_register(args.register.into(), args.immediate as u32);
+}
+
+fn execute_move_half_word_top(context: &mut CpuContext, args: &LargeImmediateArguments) {
+    let original = context.get_register(args.register.into());
+    let shifted_immediate = (args.immediate as u32) << 16;
+
+    let value = original & 0x0000ffff | shifted_immediate;
+
+    context.set_register(args.register.into(), value);
 }
 
 fn execute_supervisor_call(context: &mut CpuContext, arg: &u24) {

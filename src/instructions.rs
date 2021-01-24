@@ -180,8 +180,8 @@ pub enum InstructionData {
     Load(LoadArguments),                                            // LDR[B]<c>, LDRH<c>, LDRSH<c>, LDRD<c>, LDRSB<c>, POP<c>
     Move(DataArguments, UpdateStatusFlags),                         // MOV<c>[S]
     MoveHalfWord(LargeImmediateArguments),                          // MOVW<c>
+    MoveHalfWordTop(LargeImmediateArguments),                       // MOVT<c>
     MoveNot(DataArguments, UpdateStatusFlags),                      // MVN<c>[S]
-    MoveTop(LargeImmediateArguments),                               // MOVT<c>
     Or(ReadWriteDataArguments, UpdateStatusFlags),                  // ORR<c>[S]
     SupervisorCall(u24),                                            // SVC
     Store(StoreArguments),                                          // STR[B]<c>, STRH<c>, STRSH<c>, STRD<c>, STRSB<c>, PUSH<c>
