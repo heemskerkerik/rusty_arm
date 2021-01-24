@@ -3,6 +3,7 @@ mod context;
 mod exec;
 mod file;
 mod instructions;
+mod syscall;
 
 use std::{env, ops::RangeInclusive};
 

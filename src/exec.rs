@@ -2,7 +2,7 @@ use core::panic;
 
 use ux::{u24, u4};
 
-use crate::{context::*, instructions::*};
+use crate::{context::*, instructions::*, syscall};
 
 const INSTRUCTION_SIZE: u32 = 4;
 
@@ -286,13 +286,7 @@ fn execute_supervisor_call(context: &mut CpuContext, arg: &u24) {
         panic!("Unsupported supervisor call {:0>6X}", *arg);
     }
 
-    const SYSTEM_CALL_REGISTER: u8 = 7;
-    let system_call = context.get_register(SYSTEM_CALL_REGISTER);
-
-    match system_call {
-        1 => context.halt(),
-        _ => panic!("Unsupported system call {:0>8X}", system_call)
-    }
+    syscall::execute_system_call(context);
 }
 
 fn get_sign(value: u32) -> bool {

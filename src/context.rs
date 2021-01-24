@@ -1,4 +1,4 @@
-use std::{mem::size_of, ops::RangeInclusive};
+use std::{mem::size_of, ops::RangeInclusive, slice};
 
 pub struct CpuContext {
     registers: [u32; 16],
@@ -121,6 +121,20 @@ impl CpuContext {
 
         unsafe {
             *pointer_u16
+        }
+    }
+
+    pub fn read_string(&self, address: u32) -> String {
+        let length = self.read_word(address);
+        let address = (address as usize) + size_of::<u32>();
+
+        assert!(address % std::mem::align_of::<u16>() == 0);
+
+        let slice = &self.memory[address..address + (length * 2) as usize];
+
+        unsafe {
+            let slice_u16: &[u16] = slice::from_raw_parts(slice.as_ptr() as *const u16, length as usize);
+            String::from_utf16(slice_u16).unwrap()
         }
     }
 
