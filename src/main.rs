@@ -31,6 +31,7 @@ fn main() {
     let breakpoints = [];
     let memory_ranges: &[RangeInclusive<u32>] = &[];
 
+    let mut cycles = 0u32;
     let mut stopwatch = Stopwatch::start_new();
 
     while !context.is_halted() {
@@ -49,9 +50,13 @@ fn main() {
                 println!("{:0>8X}..{:0>8X} = {}", range.start(), range.end(), context.debug_get_memory_range(range));
             }
         }
+
+        cycles += 1;
     }
 
     stopwatch.stop();
 
-    println!("Took {} ns ({} ms) to execute.", stopwatch.elapsed().as_nanos(), stopwatch.elapsed().as_millis());
+    const NANOSECONDS_PER_SECOND: u128 = 1_000_000_000;
+    let cycles_per_second = (cycles as u128) * NANOSECONDS_PER_SECOND / stopwatch.elapsed().as_nanos();
+    println!("Took {} ns ({} ms) to execute {} cycles. ~ {} cycles per second", stopwatch.elapsed().as_nanos(), stopwatch.elapsed().as_millis(), cycles, cycles_per_second);
 }
