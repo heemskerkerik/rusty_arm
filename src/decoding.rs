@@ -32,9 +32,9 @@ pub fn decode(encoded_instruction: u32) -> Result<Instruction, String> {
 
             Ok((condition, data))
         },
-        SERVICE_CALL_INSTRUCTION_CLASS => {
+        SUPERVISOR_CALL_INSTRUCTION_CLASS if (encoded_instruction & 0x0f000000) == 0x0f000000 => {
             let immediate = u24::new(encoded_instruction & 0x00ffffff);
-            Ok((condition, InstructionData::ServiceCall(immediate)))
+            Ok((condition, InstructionData::SupervisorCall(immediate)))
         },
         _ => {
             Err(format!("Unknown instruction {:0>8X}", encoded_instruction))
@@ -399,7 +399,7 @@ const DATA_PROCESSING_REGISTER_INSTRUCTION_CLASS: u32 = 0x00000000;
 const DATA_PROCESSING_IMMEDIATE_INSTRUCTION_CLASS: u32 = 0x02000000;
 const LOAD_STORE_IMMEDIATE_INSTRUCTION_CLASS: u32 = 0x04000000;
 const LOAD_STORE_REGISTER_INSTRUCTION_CLASS: u32 = 0x05000000;
-const SERVICE_CALL_INSTRUCTION_CLASS: u32 = 0x0f000000;
+const SUPERVISOR_CALL_INSTRUCTION_CLASS: u32 = 0x0e000000;
 const EXTRA_LOAD_STORES_FLAG: u32 = 0x00000090;
 const UPDATE_STATUS_BIT: u32 = 0x00100000;
 const IMMEDIATE_MODE_BIT: u32 = 0x02000000;

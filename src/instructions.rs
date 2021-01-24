@@ -183,7 +183,7 @@ pub enum InstructionData {
     MoveNot(DataArguments, UpdateStatusFlags),                      // MVN<c>[S]
     MoveTop(LargeImmediateArguments),                               // MOVT<c>
     Or(ReadWriteDataArguments, UpdateStatusFlags),                  // ORR<c>[S]
-    ServiceCall(u24),                                               // SWI/SVC
+    SupervisorCall(u24),                                            // SVC
     Store(StoreArguments),                                          // STR[B]<c>, STRH<c>, STRSH<c>, STRD<c>, STRSB<c>, PUSH<c>
     Subtract(ReadWriteDataArguments, UpdateStatusFlags),            // SUB<c>[S]
 }

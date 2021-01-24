@@ -30,7 +30,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         InstructionData::MoveHalfWord(ref args) => execute_move_half_word(context, &args),
         InstructionData::MoveNot(ref args, ref update_status) => execute_move_not(context, &args, &update_status),
         InstructionData::Or(ref args, ref update_status) => execute_or(context, &args, &update_status),
-        InstructionData::ServiceCall(ref arg) => execute_service_call(context, &arg),
+        InstructionData::SupervisorCall(ref arg) => execute_supervisor_call(context, &arg),
         InstructionData::Store(ref args) => execute_store(context, &args),
         InstructionData::Subtract(ref args, ref update_status) => execute_subtract(context, &args, &update_status),
         _ => panic!("Instruction {:?} at {:0>8X} not yet implemented", instr.1, program_counter),
@@ -271,17 +271,19 @@ fn execute_move_half_word(context: &mut CpuContext, args: &LargeImmediateArgumen
     context.set_register(args.register.into(), args.immediate as u32);
 }
 
-fn execute_service_call(context: &mut CpuContext, arg: &u24) {
-    if *arg != u24::new(0) {
-        panic!("Unsupported software interrupt {:0>6X}", *arg);
+fn execute_supervisor_call(context: &mut CpuContext, arg: &u24) {
+    const SYSTEM_CALL: u32 = 0;
+
+    if *arg != u24::new(SYSTEM_CALL) {
+        panic!("Unsupported supervisor call {:0>6X}", *arg);
     }
 
-    const SERVICE_CALL_REGISTER: u8 = 7;
-    let service_call = context.get_register(SERVICE_CALL_REGISTER);
+    const SYSTEM_CALL_REGISTER: u8 = 7;
+    let system_call = context.get_register(SYSTEM_CALL_REGISTER);
 
-    match service_call {
+    match system_call {
         1 => context.halt(),
-        _ => panic!("Unsupported service")
+        _ => panic!("Unsupported system call {:0>8X}", system_call)
     }
 }
 
