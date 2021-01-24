@@ -78,13 +78,14 @@ fn decode_data_processing_instruction(encoded_instruction: u32) -> Result<Instru
     match opcode {
         ADD_OPCODE => Ok(InstructionData::Add(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         ADD_WITH_CARRY_OPCODE => Ok(InstructionData::AddWithCarry(decode_read_write_arguments(encoded_instruction), update_status_flag)),
+        AND_OPCODE => Ok(InstructionData::And(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         BRANCH_EXCHANGE_OPCODE => Ok(InstructionData::BranchExchange(decode_branch_exchange_arguments(encoded_instruction))),
         COMPARE_OPCODE => Ok(InstructionData::Compare(decode_read_arguments(encoded_instruction))),
         MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
         MOVE_NOT_OPCODE => Ok(InstructionData::MoveNot(decode_write_arguments(encoded_instruction), update_status_flag)),
         OR_OPCODE => Ok(InstructionData::Or(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         SUBTRACT_OPCODE => Ok(InstructionData::Subtract(decode_read_write_arguments(encoded_instruction), update_status_flag)),
-        _ => Err(format!("Unknown opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
+        _ => Err(format!("Unknown data processing opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
     }
 }
 
@@ -94,7 +95,7 @@ fn decode_extra_data_processing_immediate_instruction(encoded_instruction: u32) 
     match opcode {
         MOVE_HALFWORD_OPCODE => Ok(InstructionData::MoveHalfWord(decode_large_immediate_arguments(encoded_instruction))),
         MOVE_HALFWORD_TOP_OPCODE => Ok(InstructionData::MoveHalfWordTop(decode_large_immediate_arguments(encoded_instruction))),
-        _ => Err(format!("Unknown opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
+        _ => Err(format!("Unknown extra data processing opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
     }
 }
 
@@ -419,6 +420,7 @@ const OPCODE_MASK: u32 = 0x01e00000;
 
 const ADD_OPCODE: u8 = 0x4;
 const ADD_WITH_CARRY_OPCODE: u8 = 0x5;
+const AND_OPCODE: u8 = 0x0;
 const BRANCH_EXCHANGE_OPCODE: u8 = 0x9;
 const COMPARE_OPCODE: u8 = 0xa;
 const MOVE_OPCODE: u8 = 0xd;

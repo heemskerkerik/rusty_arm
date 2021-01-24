@@ -21,6 +21,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
     match instr.1 {
         InstructionData::Add(ref args, ref update_status) => execute_add(context, &args, &update_status),
         InstructionData::AddWithCarry(ref args, ref update_status) => execute_add_with_carry(context, &args, &update_status),
+        InstructionData::And(ref args, ref update_status) => execute_and(context, &args, &update_status),
         InstructionData::Branch(ref address, ref link) => execute_branch(context, &address, &link),
         InstructionData::BranchExchange(ref register) => execute_branch_exchange(context, &register),
         InstructionData::Compare(ref args) => execute_compare(context, &args),
@@ -153,6 +154,22 @@ fn execute_or(context: &mut CpuContext, args: &ReadWriteDataArguments, update_st
     let (destination_register, original, operand, carry) = get_read_write_data_arguments(context, args);
 
     let result = original | operand;
+    context.set_register(destination_register.into(), result);
+
+    if let UpdateStatusFlags::UpdateStatusFlags = *update_status {
+        context.set_status(
+            Some(get_sign(result)),
+            Some(result == 0),
+            Some(carry),
+            None
+        );
+    }
+}
+
+fn execute_and(context: &mut CpuContext, args: &ReadWriteDataArguments, update_status: &UpdateStatusFlags) {
+    let (destination_register, original, operand, carry) = get_read_write_data_arguments(context, args);
+
+    let result = original & operand;
     context.set_register(destination_register.into(), result);
 
     if let UpdateStatusFlags::UpdateStatusFlags = *update_status {
