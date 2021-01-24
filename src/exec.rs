@@ -35,7 +35,6 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         InstructionData::SupervisorCall(ref arg) => execute_supervisor_call(context, &arg),
         InstructionData::Store(ref args) => execute_store(context, &args),
         InstructionData::Subtract(ref args, ref update_status) => execute_subtract(context, &args, &update_status),
-        _ => panic!("Instruction {:?} at {:0>8X} not yet implemented", instr.1, program_counter),
     }
 }
 

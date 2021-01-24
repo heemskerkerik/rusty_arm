@@ -38,11 +38,12 @@ write_stdout:
 // r0 quotient
 // r1 remainder
 udiv:
-0:  cmp     r1,r2
+    cmp     r1,r2
     movhs   r1,r2
     bxhs    lr
     mvn     r3,#0
-1:  adds    r0,r0
+1:  
+    adds    r0,r0
     adcs    r1,r1
     cmpcc   r1,r2
     subcs   r1,r2
