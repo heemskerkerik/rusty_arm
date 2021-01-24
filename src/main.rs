@@ -52,7 +52,5 @@ fn main() {
 
     stopwatch.stop();
 
-    println!("Registers:\n{}\n{}", context.debug_get_registers(), context.debug_get_status());
-
     println!("Took {} ns ({} ms) to execute.", stopwatch.elapsed().as_nanos(), stopwatch.elapsed().as_millis());
 }
