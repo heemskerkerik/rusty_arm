@@ -37,7 +37,12 @@ fn main() {
     while !context.is_halted() {
         let program_counter = context.get_program_counter();
         let word = context.read_word(program_counter);
-        let instr = decode(word).unwrap();
+        let instr = decode(word);
+
+        let instr = match instr {
+            Ok(i) => i,
+            Err(e) => panic!("Error decoding instruction at {:0>8X}: {}", program_counter, e),
+        };
 
         if cfg!(feature = "breakpoints") && breakpoints.contains(&program_counter) {
             println!("Breakpoint: {:0>8X}\nRegisters:\n{}\n{}", program_counter, context.debug_get_registers(), context.debug_get_status());
