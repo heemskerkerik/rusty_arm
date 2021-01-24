@@ -182,6 +182,7 @@ pub enum InstructionData {
     MoveHalfWord(LargeImmediateArguments),                          // MOVW<c>
     MoveHalfWordTop(LargeImmediateArguments),                       // MOVT<c>
     MoveNot(DataArguments, UpdateStatusFlags),                      // MVN<c>[S]
+    MoveStatusToRegister(Register),                                 // MRS<c>
     Or(ReadWriteDataArguments, UpdateStatusFlags),                  // ORR<c>[S]
     SupervisorCall(u24),                                            // SVC
     Store(StoreArguments),                                          // STR[B]<c>, STRH<c>, STRSH<c>, STRD<c>, STRSB<c>, PUSH<c>

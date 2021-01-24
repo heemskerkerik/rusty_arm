@@ -30,6 +30,7 @@ pub fn execute(context: &mut CpuContext, instr: Instruction) {
         InstructionData::MoveHalfWord(ref args) => execute_move_half_word(context, &args),
         InstructionData::MoveHalfWordTop(ref args) => execute_move_half_word_top(context, &args),
         InstructionData::MoveNot(ref args, ref update_status) => execute_move_not(context, &args, &update_status),
+        InstructionData::MoveStatusToRegister(ref register) => execute_move_status_to_register(context, &register),
         InstructionData::Or(ref args, ref update_status) => execute_or(context, &args, &update_status),
         InstructionData::SupervisorCall(ref arg) => execute_supervisor_call(context, &arg),
         InstructionData::Store(ref args) => execute_store(context, &args),
@@ -304,6 +305,21 @@ fn execute_supervisor_call(context: &mut CpuContext, arg: &u24) {
     }
 
     syscall::execute_system_call(context);
+}
+
+fn execute_move_status_to_register(context: &mut CpuContext, register: &Register) {
+    let status = context.get_status();
+
+    let negative_value: u32 = if status.negative { 1 } else { 0 };
+    let zero_value: u32 = if status.zero { 1 } else { 0 };
+    let carry_value: u32 = if status.carry { 1 } else { 0 };
+    let overflow_value: u32 = if status.overflow { 1 } else { 0 };
+    let value = (negative_value << 31)
+                  | (zero_value << 30)
+                  | (carry_value << 29)
+                  | (overflow_value << 28);
+    
+    context.set_register((*register).into(), value);
 }
 
 fn get_sign(value: u32) -> bool {

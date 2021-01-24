@@ -83,6 +83,7 @@ fn decode_data_processing_instruction(encoded_instruction: u32) -> Result<Instru
         COMPARE_OPCODE => Ok(InstructionData::Compare(decode_read_arguments(encoded_instruction))),
         MOVE_OPCODE => Ok(InstructionData::Move(decode_write_arguments(encoded_instruction), update_status_flag)),
         MOVE_NOT_OPCODE => Ok(InstructionData::MoveNot(decode_write_arguments(encoded_instruction), update_status_flag)),
+        MOVE_STATUS_TO_REGISTER_OPCODE => Ok(InstructionData::MoveStatusToRegister(decode_destination_register(encoded_instruction))),
         OR_OPCODE => Ok(InstructionData::Or(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         SUBTRACT_OPCODE => Ok(InstructionData::Subtract(decode_read_write_arguments(encoded_instruction), update_status_flag)),
         _ => Err(format!("Unknown data processing opcode {:0>2X} (instruction: {:0>8X})", opcode, encoded_instruction))
@@ -388,6 +389,10 @@ fn decode_branch_exchange_arguments(encoded_instruction: u32) -> Register {
     u4::new((encoded_instruction & 0x0000000f) as u8)
 }
 
+fn decode_destination_register(encoded_instruction: u32) -> Register {
+    u4::new(((encoded_instruction & 0x0000f000) >> 12) as u8)
+}
+
 const EQUAL_CONDITION: u8 = 0x0;
 const NOT_EQUAL_CONDITION: u8 = 0x1;
 const CARRY_SET_CONDITION: u8 = 0x2;
@@ -427,6 +432,7 @@ const MOVE_OPCODE: u8 = 0xd;
 const MOVE_HALFWORD_OPCODE: u8 = 0x8;
 const MOVE_HALFWORD_TOP_OPCODE: u8 = 0xa;
 const MOVE_NOT_OPCODE: u8 = 0xf;
+const MOVE_STATUS_TO_REGISTER_OPCODE: u8 = 0x8;
 const OR_OPCODE: u8 = 0xc;
 const SUBTRACT_OPCODE: u8 = 0x2;
 
