@@ -170,7 +170,7 @@ impl CpuContext {
     pub fn debug_get_registers(&self) -> String {
         let mut result = String::new();
 
-        for i in 0..15 {
+        for i in 0..=15 {
             result.push_str(&format!("R{}: {:0>8X}\n", i, self.registers[i]))
         }
 
