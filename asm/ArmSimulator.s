@@ -1,3 +1,7 @@
+// this is a very minimal implementation of an ARMv7 simular in ARMv7 assembly
+// it only supports MOV, ADD, CMP and B. it halts when a branch instruction jumps to itself
+// the PC is initialized to the address of 'program'
+
 .section .text
 .global _start
 .arm
@@ -16,7 +20,7 @@ loop_clear:
     cmp r1, #16
     bne loop_clear
 
-    mov r0, #0xf3c              // initialize R15 (PC) to 0x1000
+    mov r0, #0xf3c              // initialize R15 (PC) to the address of program
     adr r1, program
     str r1, [r0]
 
