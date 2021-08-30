@@ -1,3 +1,5 @@
+// calculates the nth number (n is hard-coded to 37) from the Fibonacci sequence and writes the output to standard out
+
 .section .text
 .global _start
 .arm
